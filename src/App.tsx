@@ -1,122 +1,45 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { ReportPage } from './report/ReportPage'
+import { href, useRoute } from './router'
+import { useDemoStore } from './store/hooks'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
+  const route = useRoute()
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+      <DemoBar route={route} />
+      {route === 'report' ? <ReportPage /> : <AdminPlaceholder />}
     </>
   )
 }
 
-export default App
+function DemoBar({ route }: { route: string }) {
+  const demo = useDemoStore()
+  if (!demo) return null
+  const reset = () => {
+    if (confirm('Reset the demo? This throws away every change made in this browser and reloads the sample tickets.')) demo.reset()
+  }
+  return (
+    <div className="demo-bar">
+      <div className="demo-bar__info">
+        <span className="demo-bar__tag">DEMO</span>
+        <span>Sample data, stored only in this browser. No emails are sent.</span>
+      </div>
+      <div className="demo-bar__actions">
+        <nav className="seg" aria-label="Views">
+          <a href={href('report')} aria-current={route === 'report' ? 'page' : undefined}>Public report form</a>
+          <a href={href('admin')} aria-current={route === 'admin' ? 'page' : undefined}>Admin dashboard</a>
+        </nav>
+        <button className="demo-bar__reset" onClick={reset}>Reset demo</button>
+      </div>
+    </div>
+  )
+}
+
+function AdminPlaceholder() {
+  return (
+    <main style={{ maxWidth: 1120, margin: '0 auto', padding: '48px 24px' }}>
+      <h1 style={{ color: 'var(--navy)', fontSize: 26 }}>Cylinder issues</h1>
+      <p style={{ color: 'var(--muted)' }}>The admin dashboard is the next step.</p>
+    </main>
+  )
+}

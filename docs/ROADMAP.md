@@ -55,14 +55,14 @@ printouts and the How it works tab.
 A working version of every screen, deployed on Pages, with seed data kept in the browser.
 This is already a usable demo if the later phases slip.
 
-- [ ] Vite + React + TypeScript, with automatic deployment to GitHub Pages
-- [ ] Port the business rules from the prototype into `src/lib/` with unit tests: business hours
+- [x] Vite + React + TypeScript, with automatic deployment to GitHub Pages
+- [x] Port the business rules from the prototype into `src/lib/` with unit tests: business hours
       (`bizMs`, `addBiz`), deadline clocks, routing by building, ETA detection, "to discuss" rules
-- [ ] Public report form, success state, FAQ and install guide placeholders
+- [x] Public report form, success state, FAQ and install guide placeholders
 - [ ] Admin queue: summary cards, filters, table, ticket panel, email thread timeline
 - [ ] Ticket actions: status, complexity, close-out, Set ETA / Ignore, log call/visit
 - [ ] Today's deliveries tab, visit agenda and driver stop sheet (printable)
-- [ ] Keep data behind one interface (`TicketStore`), so Phase 2 swaps the store without touching screens
+- [x] Keep data behind one interface (`TicketStore`), so Phase 2 swaps the store without touching screens
 
 **Done when:** every button in the design does something believable on the live Pages URL.
 
