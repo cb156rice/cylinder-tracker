@@ -1,18 +1,19 @@
 import { ReportPage } from './report/ReportPage'
-import { href, useRoute } from './router'
+import { AdminPage } from './admin/AdminPage'
+import { adminHref, reportHref, useRoute } from './router'
 import { useDemoStore } from './store/hooks'
 
 export default function App() {
   const route = useRoute()
   return (
     <>
-      <DemoBar route={route} />
-      {route === 'report' ? <ReportPage /> : <AdminPlaceholder />}
+      <DemoBar page={route.page} />
+      {route.page === 'report' ? <ReportPage /> : <AdminPage tab={route.tab} ticketId={route.ticketId} />}
     </>
   )
 }
 
-function DemoBar({ route }: { route: string }) {
+function DemoBar({ page }: { page: 'report' | 'admin' }) {
   const demo = useDemoStore()
   if (!demo) return null
   const reset = () => {
@@ -26,20 +27,11 @@ function DemoBar({ route }: { route: string }) {
       </div>
       <div className="demo-bar__actions">
         <nav className="seg" aria-label="Views">
-          <a href={href('report')} aria-current={route === 'report' ? 'page' : undefined}>Public report form</a>
-          <a href={href('admin')} aria-current={route === 'admin' ? 'page' : undefined}>Admin dashboard</a>
+          <a href={reportHref} aria-current={page === 'report' ? 'page' : undefined}>Public report form</a>
+          <a href={adminHref()} aria-current={page === 'admin' ? 'page' : undefined}>Admin dashboard</a>
         </nav>
         <button className="demo-bar__reset" onClick={reset}>Reset demo</button>
       </div>
     </div>
-  )
-}
-
-function AdminPlaceholder() {
-  return (
-    <main style={{ maxWidth: 1120, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ color: 'var(--navy)', fontSize: 26 }}>Cylinder issues</h1>
-      <p style={{ color: 'var(--muted)' }}>The admin dashboard is the next step.</p>
-    </main>
   )
 }

@@ -3,7 +3,7 @@ import { FAQS, INSTALL_STEPS, SAFETY_PHONE } from '../content'
 import { CATEGORIES, RESOLVER_LABEL, deadline, validateReport, type ReportErrors } from '../lib/rules'
 import { fmt } from '../lib/time'
 import type { ReportInput, Ticket } from '../lib/types'
-import { href } from '../router'
+import { adminHref } from '../router'
 import { useStore } from '../store/hooks'
 import './ReportPage.css'
 
@@ -135,7 +135,7 @@ export function ReportPage() {
             <ol>
               {INSTALL_STEPS.map((s, i) => <li key={s}><span className="guide__n">{String(i + 1).padStart(2, '0')}</span><span>{s}</span></li>)}
             </ol>
-            <a href="#/report" onClick={e => e.preventDefault()}>Download full guide (PDF)</a>
+            <a href="#/report" onClick={e => e.preventDefault()} aria-disabled="true">Download full guide (PDF)</a>
           </section>
         </aside>
       </main>
@@ -160,7 +160,7 @@ function Success({ ticket, onAnother }: { ticket: Ticket; onAnother: () => void 
       </div>
       <div className="success__actions">
         <button className="btn" onClick={onAnother}>Submit another report</button>
-        <a className="btn btn--primary" href={href('admin') + '/' + ticket.id}>See it in the admin view</a>
+        <a className="btn btn--primary" href={adminHref('queue', ticket.id)}>See it in the admin view</a>
       </div>
     </div>
   )
