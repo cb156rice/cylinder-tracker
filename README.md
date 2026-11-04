@@ -5,7 +5,7 @@ Demo project, hosted entirely on GitHub.
 
 - Live site: https://cb156rice.github.io/cylinder-tracker/
 - Plan: [docs/ROADMAP.md](docs/ROADMAP.md)
-- Picking this up in a new session: [docs/HANDOFF.md](docs/HANDOFF.md)
+- Picking this up in a new session: the latest `docs/HANDOFF-session*.md`
 
 ## Run it locally
 
