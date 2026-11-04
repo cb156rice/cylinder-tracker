@@ -1,6 +1,7 @@
 # Airgas Cylinder Issue Tracker: Roadmap
 
-Design source: `design/` (from the Claude Design handoff). The main reference is
+Design source: `design/` (from the Claude Design handoff; kept on this computer only and left out of git
+because it has real staff names). The main reference is
 `Cylinder Issue Tracker v2.dc.html`, and `design/README.md` is the spec.
 
 ## Hosting: GitHub only
@@ -39,13 +40,15 @@ printouts and the How it works tab.
 
 ---
 
-## Phase 0: Setup (half a day)
+## Phase 0: Setup ✅ done Nov 4, 2026
 
-- [ ] GitHub account set up; two repos: public `cylinder-tracker`, private `cylinder-tracker-data`
-- [ ] Demo Gmail account with 2-step verification and an app password (for IMAP/SMTP)
-- [ ] EmailJS account and template; the "To" address is set in the template, not in the page
-- [ ] Anthropic API key (for Phase 4)
-- [ ] Store the secrets (Gmail app password, Anthropic key) in the private repo's Actions secrets
+- [x] Two repos: public `cb156rice/cylinder-tracker` (site), private `cb156rice/cylinder-tracker-data` (data + backend Actions)
+- [x] Demo Gmail account `cylindertracker1@gmail.com`. App passwords weren't available on it, so mail access uses the
+      **Gmail API with an OAuth refresh token** (Google Cloud project `cylinder-tracker`, Desktop client, scope `gmail.modify`)
+- [x] EmailJS account, Gmail service and template; the "To" address is fixed in the template, not in the page
+- [x] Gmail secrets in the private repo's Actions secrets: `GMAIL_ADDRESS`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`
+- [x] Site deploys to https://cb156rice.github.io/cylinder-tracker/ on every push to `main`
+- [ ] Anthropic API key, saved as `ANTHROPIC_API_KEY` in the private repo's Actions secrets (needed in Phase 4)
 
 ## Phase 1: Front end with fake data (1–2 weeks part-time)
 
@@ -76,7 +79,7 @@ This is already a usable demo if the later phases slip.
 ## Phase 3: Real email, the boss demo (about 1 week)
 
 - [ ] Form sends through EmailJS to the tracker mailbox
-- [ ] Mail poller Action: IMAP read, ticket creation, reply matching by `[RG-####]`,
+- [ ] Mail poller Action: read through the Gmail API, ticket creation, reply matching by `[RG-####]`,
       quoted-text stripping, new participant detection
 - [ ] Mailer Action: sends thread messages with `[RG-####]` subjects and threading headers
 - [ ] "Check mail now" button (starts the poller through the GitHub API)
