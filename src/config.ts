@@ -8,4 +8,6 @@ export const config = {
   },
   trackerAddress: 'cylindertracker1@gmail.com',
   dataRepo: { owner: 'cb156rice', name: 'cylinder-tracker-data' },
+  /** Lab replies YES → close the ticket (true) or mark it ready for the coordinator to close (false). Open question. */
+  autoCloseOnConfirm: true,
 }

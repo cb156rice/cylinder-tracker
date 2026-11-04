@@ -8,7 +8,7 @@ export default function App() {
   return (
     <>
       <DemoBar page={route.page} />
-      {route.page === 'report' ? <ReportPage /> : <AdminPage tab={route.tab} ticketId={route.ticketId} />}
+      {route.page === 'report' ? <ReportPage /> : <AdminPage tab={route.tab} ticketId={route.ticketId} ask={route.ask} />}
     </>
   )
 }

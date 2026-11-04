@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { CATEGORY_LABEL, PEOPLE, clock, locationLabel } from '../lib/rules'
 import { fmtShort } from '../lib/time'
 import type { RiceStaff, ScheduleEntry, Ticket } from '../lib/types'
 import { adminHref, go } from '../router'
 import { TONE_TEXT, threadSummary } from './display'
 import { StatusPill } from './StatusPill'
+import { Printouts, type PrintoutKind } from './Printouts'
 import { TicketPanel } from './TicketPanel'
 
 type Filter = 'all' | 'open' | 'progress' | 'done' | 'overdue'
@@ -15,9 +16,10 @@ const VIEWER_NOTE: Record<RiceStaff, string> = {
   robert: "O'Connor stockroom lead. You coordinate O'Connor tickets with Airgas.",
 }
 
-export function Queue({ tickets, schedule, now, viewer, selectedId }: { tickets: Ticket[]; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; selectedId: string | null }) {
+export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tickets: Ticket[]; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; selectedId: string | null; ask: string | null }) {
   const [mine, setMine] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
+  const [printout, setPrintout] = useState<PrintoutKind | null>(null)
 
   const rows = tickets.map(t => ({ t, c: clock(t, now) }))
   const scope = mine ? rows.filter(r => r.t.coordinator === viewer) : rows
@@ -34,14 +36,15 @@ export function Queue({ tickets, schedule, now, viewer, selectedId }: { tickets:
   ]
 
   const select = (id: string | null) => go(adminHref('queue', id))
+  const closePrintout = useCallback(() => setPrintout(null), [])
 
   return (
     <main className="admin-body">
       <div className="toolbar">
         <div className="toolbar__note">{VIEWER_NOTE[viewer]}</div>
         <div className="toolbar__actions">
-          <button className="btn-outline" disabled title="Coming in the next step">Visit agenda</button>
-          <button className="btn-outline" disabled title="Coming in the next step">Driver report</button>
+          <button className="btn-outline" onClick={() => setPrintout('agenda')}>Visit agenda</button>
+          <button className="btn-outline" onClick={() => setPrintout('driver')}>Driver report</button>
           <div className="switch" role="group" aria-label="Which tickets">
             {([[false, 'All issues', rows.length], [true, 'Assigned to me', rows.filter(r => r.t.coordinator === viewer).length]] as const).map(([v, label, n]) => (
               <button key={label} aria-pressed={mine === v} onClick={() => setMine(v)}>{label}<span className="mono">{n}</span></button>
@@ -83,8 +86,9 @@ export function Queue({ tickets, schedule, now, viewer, selectedId }: { tickets:
           </div>
         </div>
 
-        {selected && <TicketPanel key={selected.id} ticket={selected} schedule={schedule} now={now} viewer={viewer} onClose={() => select(null)} />}
+        {selected && <TicketPanel key={selected.id + (ask ?? '')} ticket={selected} schedule={schedule} now={now} viewer={viewer} ask={ask} onClose={() => select(null)} />}
       </div>
+      {printout && <Printouts kind={printout} setKind={setPrintout} tickets={tickets} now={now} onClose={closePrintout} />}
     </main>
   )
 }

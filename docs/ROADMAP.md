@@ -61,7 +61,7 @@ This is already a usable demo if the later phases slip.
 - [x] Public report form, success state, FAQ and install guide placeholders
 - [x] Admin queue: summary cards, filters, table, ticket panel, email thread timeline
 - [x] Ticket actions: status, complexity, close-out, Set ETA / Ignore, log call/visit
-- [ ] Today's deliveries tab, visit agenda and driver stop sheet (printable)
+- [x] Today's deliveries tab, visit agenda and driver stop sheet (printable)
 - [x] Keep data behind one interface (`TicketStore`), so Phase 2 swaps the store without touching screens
 
 **Done when:** every button in the design does something believable on the live Pages URL.

@@ -9,13 +9,14 @@ import {
 import type { Complexity, ResolvedBy, RiceStaff, ScheduleEntry, Status, Ticket } from '../lib/types'
 import { useStore } from '../store/hooks'
 import type { Change } from '../store/store'
+import { scheduleAskDraft } from '../lib/draft'
 import { Composer } from './Composer'
 import { STATUS_COLORS, TONE_BAR, TONE_TEXT } from './display'
 import { Thread } from './Thread'
 
 const COMPLEXITY_SUB: Record<Complexity, string> = { low: '12 hrs', medium: '2 days', high: '1 week' }
 
-export function TicketPanel({ ticket: t, schedule, now, viewer, onClose }: { ticket: Ticket; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; onClose: () => void }) {
+export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: { ticket: Ticket; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; ask: string | null; onClose: () => void }) {
   const store = useStore()
   const [completing, setCompleting] = useState(false)
   const [doneBy, setDoneBy] = useState<ResolvedBy>('airgas')
@@ -156,7 +157,7 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, onClose }: { tic
           <Thread ticket={t} />
         </div>
 
-        {t.status !== 'done' && <Composer ticket={t} viewer={viewer} />}
+        {t.status !== 'done' && <Composer ticket={t} viewer={viewer} initialDraft={ask === 'schedule' ? scheduleAskDraft(t, viewer) : ''} />}
       </div>
     </aside>
   )
