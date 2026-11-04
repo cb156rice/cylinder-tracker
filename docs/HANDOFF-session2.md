@@ -1,6 +1,6 @@
 # Session handoff: Cylinder Tracker (session 2)
 
-Last updated: Wed Nov 4, 2026. Point a new Claude session at this file to pick up where we left off.
+Last updated: Wed Nov 4, 2026 (end of session). Point a new Claude session at this file to pick up where we left off.
 It replaces [HANDOFF-session1.md](HANDOFF-session1.md), which is kept for history.
 
 ## What this is
@@ -41,7 +41,8 @@ business hours and hourly otherwise.
 cylinder-tracker-data, `public/privacy.html`, `scripts/get-gmail-token.mjs`. EmailJS: the app must send `payload`
 as **base64-encoded JSON** of the full report.
 
-**Phase 1** (session 2): every screen works with demo data in the browser. All committed locally; **not yet pushed**.
+**Phase 1** (session 2): every screen works with demo data in the browser. **Pushed and live** on Pages
+(deploy run succeeded for commit `7a535c9`).
 
 | Area | Files |
 |---|---|
@@ -65,18 +66,48 @@ Key decisions made this session:
 - **Form validation** also requires a building name when "Other building" is chosen (the prototype didn't).
 - With a ticket open, the queue table hides its Coordinator column so it fits beside the panel.
 
-Testing: 58 unit tests (`npm test`). Click-through flows were checked with a throwaway headless-Chrome script
+**Phase 2, code done but not yet tried against real GitHub** (session 2, commit `0ad9e77`, **not pushed**):
+
+| Piece | Files |
+|---|---|
+| Issue format | `src/store/githubFormat.ts`: issue #N = ticket `RG-(1000+N)`; title `[RG-1048] Leak · SST 312`; body = readable summary + ```json block of ticket fields (no id, no thread) inside `<details>`; **each thread entry is its own comment** starting with `<!-- cylinder-tracker:entry {json} -->` then readable text; labels `status:` `building:` `coordinator:`; completed tickets are closed issues. `FORMAT_VERSION = 1`. The Phase 3 Actions must use this same format. |
+| API client | `src/store/githubApi.ts`: the few REST calls (list issues, repo-wide comments `since`, create/patch issue, labels, comments) with readable error messages |
+| Store | `src/store/githubStore.ts`: refresh = list issues + comments since last sync (2 calls); `update` re-reads that one issue and its comments, applies the transition, posts new entries as comments, patches the body only if fields changed; `importTickets` loads the sample into an empty repo; `status()` for sync state/errors |
+| Switching | `src/store/connection.ts`: token saved in localStorage → `GitHubStore`, otherwise `LocalStore`. `connect()` refuses a public repo. `src/TopBar.tsx`: DEMO/LIVE bar, Connect dialog, Refresh, Disconnect, error banner. Hooks refresh every 45 s and on tab focus. |
+
+Phase 2 decisions:
+- **Append-only comments** for the thread so concurrent writers (two admins, or an admin plus the mail poller) never
+  clobber each other; only field changes rewrite the body, and they re-read the issue first.
+- Ticket IDs come from issue numbers, so the poller and the dashboard can't create duplicate IDs.
+- In live mode `schedule()` returns nothing (the schedule arrives by email in Phase 3), and "Demo: simulate Airgas
+  reply" is hidden.
+- The public form still writes to each visitor's own demo data unless that browser is connected (no token on the
+  public site). Phase 3 switches the form to EmailJS.
+- The "Viewing as" switch stays in live mode: for the demo Carlos plays all three roles.
+- Labels are best-effort (a failure there doesn't block a save).
+
+Testing: 68 unit tests, including the GitHub store against an in-memory fake of the API (two browsers, concurrent
+edits, sample import, bad token). Earlier: 58 unit tests (`npm test`). Click-through flows were checked with a throwaway headless-Chrome script
 (DevTools protocol via Node's built-in WebSocket); it isn't in the repo. Chrome is at
 `/Applications/Google Chrome.app`, and `--headless=new --screenshot` works for quick visual checks
 (minimum window width is about 500 px).
 
 ## Next
 
-1. **Carlos pushes** the Phase 1 commits (`git push`), then check the Actions run and the live Pages URL.
-2. **Phase 2: GitHub Issues store** (see ROADMAP.md). A `GitHubStore implements TicketStore`; token entry screen;
-   ticket JSON in the issue body (or a fenced block), labels for status/building, thread entries as comments or in
-   the body. Decide the issue format first, because the Actions jobs in Phase 3 will read and write it too.
-3. Phase 3 (real email; **the boss demo**), Phase 4 (deadline checks, Claude drafts, delivery confirmation).
+1. **Carlos makes a dashboard token** (separate from the push token, least privilege), signed in as **cb156rice**:
+   https://github.com/settings/personal-access-tokens/new → name `cylinder-tracker dashboard`, 90 days,
+   owner cb156rice, "Only select repositories" → `cylinder-tracker-data`, Repository permissions → **Issues: Read
+   and write**. He pastes it into the dashboard's **Connect to GitHub** dialog (never into chat).
+2. **First real test** on localhost (`npm run dev`, then http://localhost:5173/cylinder-tracker/#/admin): connect,
+   **Load sample tickets**, check issues appear on github.com with labels and comments, change a ticket.
+   Watch for: label creation with an Issues-only token (best-effort, may silently fail), CORS, rate limits,
+   GitHub's secondary limit on creating content quickly during the sample import (~50 writes).
+3. **Two-browser test** (Safari or a Chrome private window, same token): a change in one shows in the other within
+   45 s. That's the Phase 2 "done when". Then tick the Phase 2 boxes in ROADMAP.md and have Carlos push.
+4. Phase 3 (real email; **the boss demo**): EmailJS from the form, Gmail poller and mailer Actions in the data repo
+   using `githubFormat.ts`'s format (consider moving the format + `src/lib` into code the Actions can import),
+   "Check mail now" (needs Actions: write on the token), demo-mode redirect of all outgoing mail to Carlos.
+5. Phase 4: deadline checks/follow-ups, Claude drafts (`draftPrompt()` is ready), delivery confirmation by reply.
 
 ## Gotchas
 
