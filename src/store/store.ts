@@ -1,9 +1,15 @@
-// Where tickets live. Phase 1: the browser (LocalStore). Phase 2: GitHub Issues.
+// Where tickets live. Demo: the browser (LocalStore). Live: GitHub Issues (GitHubStore).
 // Screens only talk to this interface, so swapping the backend doesn't touch them.
 import type { ReportInput, ScheduleEntry, Ticket } from '../lib/types'
 
 /** A ticket change: one of the functions in lib/transitions, partially applied. */
 export type Change = (t: Ticket, now: Date) => Ticket
+
+export interface StoreStatus {
+  syncing: boolean
+  error: string | null
+  lastSync: Date | null
+}
 
 export interface TicketStore {
   readonly mode: 'demo' | 'github'
@@ -16,4 +22,8 @@ export interface TicketStore {
   schedule(): Promise<ScheduleEntry[]>
   /** Called after any change; returns an unsubscribe function. */
   subscribe(listener: () => void): () => void
+  /** Stores backed by a server re-fetch on this interval (ms). */
+  readonly refreshMs?: number
+  refresh?(): Promise<void>
+  status?(): StoreStatus
 }

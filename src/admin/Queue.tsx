@@ -7,6 +7,9 @@ import { TONE_TEXT, threadSummary } from './display'
 import { StatusPill } from './StatusPill'
 import { Printouts, type PrintoutKind } from './Printouts'
 import { TicketPanel } from './TicketPanel'
+import { useStore } from '../store/hooks'
+import { GitHubStore } from '../store/githubStore'
+import { makeSeed } from '../store/seed'
 
 type Filter = 'all' | 'open' | 'progress' | 'done' | 'overdue'
 
@@ -82,7 +85,7 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
                 </a>
               )
             })}
-            {visible.length === 0 && <div className="table__empty">No tickets in this view.</div>}
+            {visible.length === 0 && (tickets.length === 0 ? <EmptyRepo /> : <div className="table__empty">No tickets in this view.</div>)}
           </div>
         </div>
 
@@ -90,5 +93,24 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
       </div>
       {printout && <Printouts kind={printout} setKind={setPrintout} tickets={tickets} now={now} onClose={closePrintout} />}
     </main>
+  )
+}
+
+/** Live mode with no tickets yet: offer to copy the sample tickets in, for a demo. */
+function EmptyRepo() {
+  const store = useStore()
+  const [done, setDone] = useState<number | null>(null)
+  if (!(store instanceof GitHubStore)) return <div className="table__empty">No tickets yet.</div>
+  const load = async () => {
+    setDone(0)
+    try { await store.importTickets(makeSeed(store.now()).tickets, setDone) } catch { setDone(null) }
+  }
+  return (
+    <div className="table__empty" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+      <span>No tickets in the shared data yet. Submit one from the report form, or load the 8 sample tickets for a demo.</span>
+      <button className="btn btn--sm btn--primary" disabled={done !== null} onClick={load}>
+        {done === null ? 'Load sample tickets' : `Loading… ${done} of 8`}
+      </button>
+    </div>
   )
 }

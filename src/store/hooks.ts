@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import type { ScheduleEntry, Ticket } from '../lib/types'
 import { StoreContext } from './storeContext'
 import { LocalStore } from './localStore'
-import type { TicketStore } from './store'
+import type { StoreStatus, TicketStore } from './store'
 
 export function useStore(): TicketStore {
   const s = useContext(StoreContext)
@@ -27,7 +27,14 @@ export function useTickets(): { tickets: Ticket[]; schedule: ScheduleEntry[]; lo
     })
     load()
     const off = store.subscribe(load)
-    return () => { live = false; off() }
+    // Live data: re-fetch on an interval, and when the tab comes back into view.
+    const refresh = () => { if (document.visibilityState === 'visible') store.refresh?.().catch(() => {}) }
+    const timer = store.refreshMs ? setInterval(refresh, store.refreshMs) : undefined
+    if (store.refreshMs) document.addEventListener('visibilitychange', refresh)
+    return () => {
+      live = false; off(); clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
   }, [store])
   return state
 }
@@ -41,4 +48,12 @@ export function useNow(): Date {
     return () => clearInterval(id)
   }, [store])
   return now
+}
+
+/** Sync state for live stores (null for the demo). */
+export function useStoreStatus(): StoreStatus | null {
+  const store = useStore()
+  const [status, setStatus] = useState(() => store.status?.() ?? null)
+  useEffect(() => store.subscribe(() => setStatus(store.status?.() ?? null)), [store])
+  return status
 }

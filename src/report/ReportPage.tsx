@@ -15,6 +15,7 @@ export function ReportPage() {
   const [errors, setErrors] = useState<ReportErrors>({})
   const [sending, setSending] = useState(false)
   const [submitted, setSubmitted] = useState<Ticket | null>(null)
+  const [submitError, setSubmitError] = useState('')
 
   const set = <K extends keyof ReportInput>(k: K, v: ReportInput[K]) => {
     setForm(f => ({ ...f, [k]: v }))
@@ -30,9 +31,12 @@ export function ReportPage() {
       return
     }
     setSending(true)
+    setSubmitError('')
     try {
       setSubmitted(await store.create(form))
       scrollTo({ top: 0 })
+    } catch (err) {
+      setSubmitError((err as Error).message)
     } finally {
       setSending(false)
     }
@@ -120,7 +124,7 @@ export function ReportPage() {
               </fieldset>
 
               <div className="report-foot">
-                <span>You'll get a ticket number by email and be copied on the thread with Airgas.</span>
+                <span>{submitError ? <span className="field__error">{submitError}</span> : "You'll get a ticket number by email and be copied on the thread with Airgas."}</span>
                 <button type="submit" className="btn btn--primary" disabled={sending}>{sending ? 'Sending…' : 'Submit report'}</button>
               </div>
             </form>
@@ -144,6 +148,7 @@ export function ReportPage() {
 }
 
 function Success({ ticket, onAnother }: { ticket: Ticket; onAnother: () => void }) {
+  const live = useStore().mode === 'github'
   const due = deadline(ticket)
   return (
     <div className="success" role="status">
@@ -156,7 +161,9 @@ function Success({ ticket, onAnother }: { ticket: Ticket; onAnother: () => void 
         </p>
       </div>
       <div className="success__demo">
-        Demo: no email was sent. This report became ticket <span className="mono">{ticket.id}</span> in this browser's demo data.
+        {live
+          ? <>No email was sent yet (that comes in Phase 3). This report became ticket <span className="mono">{ticket.id}</span> in the shared data.</>
+          : <>Demo: no email was sent. This report became ticket <span className="mono">{ticket.id}</span> in this browser's demo data.</>}
       </div>
       <div className="success__actions">
         <button className="btn" onClick={onAnother}>Submit another report</button>

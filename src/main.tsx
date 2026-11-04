@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { StoreProvider } from './store/context'
-import { LocalStore } from './store/localStore'
+import { makeStore } from './store/connection'
 
-// Phase 1: demo data in the browser. Phase 2 swaps in the GitHub Issues store here.
-const store = new LocalStore()
+// Live GitHub data if this browser has a saved token, otherwise the demo.
+const store = makeStore()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
