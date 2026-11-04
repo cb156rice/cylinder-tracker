@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HOUR, addBiz, addDays, bizMs, dayKey, dur, fmt, fmtDay, fmtShort, fromWall, sameDay, toWall } from './time'
+import { HOUR, addBiz, addBizDays, addDays, bizDaysBetween, bizMs, subBiz, dayKey, dur, fmt, fmtDay, fmtShort, fromWall, sameDay, toWall } from './time'
 
 // Chicago wall time → instant, for readable test inputs.
 const ct = (m: number, d: number, h = 0, mi = 0) => fromWall(2026, m, d, h, mi)
@@ -56,6 +56,24 @@ describe('bizMs', () => {
   it('is the inverse of addBiz', () => {
     const start = ct(10, 28, 11, 17)
     for (const h of [1, 7.5, 12, 16, 40]) expect(bizMs(start, addBiz(start, h * HOUR))).toBe(h * HOUR)
+  })
+})
+
+describe('subBiz and business days', () => {
+  it('steps back through business hours', () => {
+    expect(subBiz(ct(10, 7, 10, 30), 12 * HOUR)).toEqual(ct(10, 5, 14, 30))
+    expect(subBiz(ct(11, 2, 10), 2 * HOUR)).toEqual(ct(10, 30, 16)) // back across DST and the weekend
+    expect(subBiz(ct(10, 4, 12), HOUR)).toEqual(ct(10, 2, 16)) // from a Sunday
+  })
+  it('round-trips with bizMs', () => {
+    const end = ct(11, 4, 10, 12)
+    for (const h of [0.5, 3, 12, 40, 100]) expect(bizMs(subBiz(end, h * HOUR), end)).toBe(h * HOUR)
+  })
+  it('counts business days', () => {
+    expect(addBizDays('2026-10-09', 1)).toBe('2026-10-12') // Fri → Mon
+    expect(addBizDays('2026-10-12', -1)).toBe('2026-10-09')
+    expect(bizDaysBetween('2026-10-05', '2026-09-28')).toBe(-5)
+    expect(bizDaysBetween('2026-10-05', '2026-10-06')).toBe(1)
   })
 })
 

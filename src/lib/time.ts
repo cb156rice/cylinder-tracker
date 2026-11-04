@@ -119,6 +119,43 @@ export function addBiz(start: Date, ms: number): Date {
   throw new Error('addBiz: no business days found')
 }
 
+/** The instant `ms` business milliseconds before `end` (the inverse of addBiz). */
+export function subBiz(end: Date, ms: number): Date {
+  if (ms <= 0) return new Date(end)
+  let left = ms
+  for (let n = dayNumber(end), i = 0; i < 4000; n -= DAY, i++) {
+    if (!isBusinessDay(n)) continue
+    const [open, close] = windowOf(n)
+    const to = Math.min(close, +end)
+    if (to <= open) continue
+    if (left <= to - open) return new Date(to - left)
+    left -= to - open
+  }
+  throw new Error('subBiz: no business days found')
+}
+
+/** The calendar day `n` business days after (or before, if negative) `k`. */
+export function addBizDays(k: DateKey, n: number): DateKey {
+  const step = n < 0 ? -1 : 1
+  let d = k
+  for (let left = Math.abs(n); left > 0; ) {
+    d = addDays(d, step)
+    if (isBusinessDay(dayNumberOfKey(d))) left--
+  }
+  return d
+}
+
+/** Business days from `a` to `b` (negative if `b` is earlier). Weekend days count as the day before. */
+export function bizDaysBetween(a: DateKey, b: DateKey): number {
+  const step = b < a ? -1 : 1
+  let n = 0
+  for (let d = a; d !== b; ) {
+    d = addDays(d, step)
+    if (isBusinessDay(dayNumberOfKey(d))) n += step
+  }
+  return n
+}
+
 // ---- Calendar days (ETAs) ----
 
 export const dayKey = (d: Date): DateKey => keyOfDayNumber(dayNumber(d))
