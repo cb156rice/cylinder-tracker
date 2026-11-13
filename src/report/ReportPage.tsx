@@ -4,6 +4,7 @@ import { CATEGORIES, RESOLVER_LABEL, RESPONSE_LIMIT, coordinatorFor, validateRep
 import { addBiz, fmt } from '../lib/time'
 import type { ReportInput } from '../lib/types'
 import { sendReport, type ReportPayload } from './sendReport'
+import { randomTestReport, testEmail } from './testReports'
 import './ReportPage.css'
 
 const EMPTY: ReportInput = { name: '', email: '', phone: '', order: '', building: '', otherBuilding: '', room: '', category: '', description: '' }
@@ -73,6 +74,12 @@ export function ReportPage() {
             <Success sent={submitted} onAnother={() => { setSubmitted(null); setForm(EMPTY); setErrors({}) }} />
           ) : (
             <form className="report-form" onSubmit={submit} noValidate>
+              {import.meta.env.DEV && (
+                <div className="test-fill">
+                  <span>{testEmail ? <>Local testing · fills as <strong>{testEmail}</strong></> : <>Local testing · set VITE_TEST_EMAIL in .env.local to fill your email</>}</span>
+                  <button type="button" className="btn" onClick={() => { setForm(randomTestReport()); setErrors({}) }}>Fill test report</button>
+                </div>
+              )}
               <fieldset className="section">
                 <legend className="section__head"><span className="section__num">01</span><h2>Your contact info</h2></legend>
                 <div className="grid3">

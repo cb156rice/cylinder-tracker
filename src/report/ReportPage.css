@@ -96,3 +96,7 @@
   .hero, .wrap, .report-cols { padding-left: 16px; padding-right: 16px; }
   .report-main { padding: 20px; }
 }
+
+/* Local-dev only (import.meta.env.DEV): quick-fill bar for testing the email flow */
+.test-fill { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; border: 1px dashed currentColor; border-radius: 8px; opacity: .85; font-size: 13px; margin-bottom: 8px; }
