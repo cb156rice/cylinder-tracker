@@ -1,20 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { FAQS, INSTALL_STEPS, SAFETY_PHONE } from '../content'
-import { CATEGORIES, RESOLVER_LABEL, deadline, validateReport, type ReportErrors } from '../lib/rules'
-import { fmt } from '../lib/time'
-import type { ReportInput, Ticket } from '../lib/types'
-import { adminHref } from '../router'
-import { useStore } from '../store/hooks'
+import { CATEGORIES, RESOLVER_LABEL, RESPONSE_LIMIT, coordinatorFor, validateReport, type ReportErrors } from '../lib/rules'
+import { addBiz, fmt } from '../lib/time'
+import type { ReportInput } from '../lib/types'
+import { sendReport, type ReportPayload } from './sendReport'
 import './ReportPage.css'
 
 const EMPTY: ReportInput = { name: '', email: '', phone: '', order: '', building: '', otherBuilding: '', room: '', category: '', description: '' }
 
 export function ReportPage() {
-  const store = useStore()
   const [form, setForm] = useState<ReportInput>(EMPTY)
   const [errors, setErrors] = useState<ReportErrors>({})
   const [sending, setSending] = useState(false)
-  const [submitted, setSubmitted] = useState<Ticket | null>(null)
+  const [submitted, setSubmitted] = useState<ReportPayload | null>(null)
   const [submitError, setSubmitError] = useState('')
 
   const set = <K extends keyof ReportInput>(k: K, v: ReportInput[K]) => {
@@ -33,7 +31,7 @@ export function ReportPage() {
     setSending(true)
     setSubmitError('')
     try {
-      setSubmitted(await store.create(form))
+      setSubmitted(await sendReport(form))
       scrollTo({ top: 0 })
     } catch (err) {
       setSubmitError((err as Error).message)
@@ -72,7 +70,7 @@ export function ReportPage() {
       <main className="report-cols">
         <div className="card report-main">
           {submitted ? (
-            <Success ticket={submitted} onAnother={() => { setSubmitted(null); setForm(EMPTY); setErrors({}) }} />
+            <Success sent={submitted} onAnother={() => { setSubmitted(null); setForm(EMPTY); setErrors({}) }} />
           ) : (
             <form className="report-form" onSubmit={submit} noValidate>
               <fieldset className="section">
@@ -147,27 +145,22 @@ export function ReportPage() {
   )
 }
 
-function Success({ ticket, onAnother }: { ticket: Ticket; onAnother: () => void }) {
-  const live = useStore().mode === 'github'
-  const due = deadline(ticket)
+function Success({ sent, onAnother }: { sent: ReportPayload; onAnother: () => void }) {
+  const r = sent.report
+  const due = addBiz(new Date(sent.submittedAt), RESPONSE_LIMIT)
   return (
     <div className="success" role="status">
       <span className="success__badge" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <h2>Report received</h2>
         <p>
-          It goes to <strong>{RESOLVER_LABEL[ticket.coordinator]}</strong> and to Airgas. Your ticket number is on its way
-          to {ticket.reporter.email}, and you're copied on the email thread. Expect a response by <strong>{due ? fmt(due) : '—'}</strong>.
+          It goes to <strong>{r.building ? RESOLVER_LABEL[coordinatorFor(r.building)] : 'the stockroom'}</strong> and to Airgas.
+          Your ticket number is on its way to <strong>{r.email}</strong> (usually within 15 minutes), and you'll be copied on the
+          email thread. Expect a response by <strong>{fmt(due)}</strong>.
         </p>
-      </div>
-      <div className="success__demo">
-        {live
-          ? <>No email was sent yet (that comes in Phase 3). This report became ticket <span className="mono">{ticket.id}</span> in the shared data.</>
-          : <>Demo: no email was sent. This report became ticket <span className="mono">{ticket.id}</span> in this browser's demo data.</>}
       </div>
       <div className="success__actions">
         <button className="btn" onClick={onAnother}>Submit another report</button>
-        <a className="btn btn--primary" href={adminHref('queue', ticket.id)}>See it in the admin view</a>
       </div>
     </div>
   )
