@@ -68,13 +68,15 @@ This is already a usable demo if the later phases slip.
 
 ## Phase 2: GitHub Issues as the database (about 1 week)
 
-- [ ] `GitHubStore`: reads and writes tickets as issues, labels and comments in the private repo
-- [ ] Admin sign-in screen: paste a fine-grained GitHub token, saved in the browser
-- [ ] Ticket format: a small JSON block in the issue body for fields (order, building, ETA…),
+- [x] `GitHubStore`: reads and writes tickets as issues, labels and comments in the private repo
+- [x] Admin sign-in screen: paste a fine-grained GitHub token, saved in the browser
+- [x] Ticket format: a small JSON block in the issue body for fields (order, building, ETA…),
       comments tagged by kind (email in/out, call, note)
-- [ ] Polling refresh in the dashboard (every 30–60 s)
+- [x] Polling refresh in the dashboard (every 30–60 s)
 
 **Done when:** two people on different computers see the same tickets and changes.
+
+*Done Nov 13, 2026: tested live against cylinder-tracker-data (sample import, edits, two browsers).*
 
 ## Phase 3: Real email, the boss demo (about 1 week)
 
