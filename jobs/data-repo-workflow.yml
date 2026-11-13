@@ -1,0 +1,44 @@
+# Copy of .github/workflows/mail.yml in the PRIVATE repo cb156rice/cylinder-tracker-data.
+# It checks out this public repo, builds jobs/main.ts and runs it against the data repo's issues.
+# Keep the two in sync by hand (edit here, paste there).
+name: Mail
+
+on:
+  schedule:
+    # Times are UTC. Chicago is UTC-6 in winter (UTC-5 in summer).
+    - cron: '*/15 13-23 * * 1-5' # every 15 min, about 7am-6pm on weekdays
+    - cron: '0 0-12 * * 1-5'     # hourly overnight on weekdays
+    - cron: '0 * * * 0,6'        # hourly on weekends
+  workflow_dispatch: {}          # "Run workflow" button (and "Check mail now" later)
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: mail
+  cancel-in-progress: false
+
+jobs:
+  mail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cb156rice/cylinder-tracker
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:jobs
+      - run: node dist-jobs/main.js
+        env:
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          AIRGAS_ADDRESSES: ${{ vars.AIRGAS_ADDRESSES }}
+          STAFF_ADDRESSES: ${{ vars.STAFF_ADDRESSES }}

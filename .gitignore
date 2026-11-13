@@ -32,3 +32,4 @@ client_secret*.json
 
 # Design handoff stays local (real staff names); see ROADMAP.md
 design/
+dist-jobs

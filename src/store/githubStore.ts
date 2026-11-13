@@ -66,10 +66,12 @@ export class GitHubStore implements TicketStore {
     }
   }
 
-  async create(input: ReportInput) {
+  /** `at` and `ref` are for the mail poller: the form's submit time, and the submission id on the opening entry. */
+  async create(input: ReportInput, opts: { at?: Date; ref?: string } = {}) {
     const errors = validateReport(input)
     if (Object.keys(errors).length) throw new Error('Report is not valid: ' + Object.keys(errors).join(', '))
-    const draft = createTicket(input, 'RG-new', this.now())
+    const draft = createTicket(input, 'RG-new', opts.at ?? this.now())
+    if (opts.ref) draft.thread[0] = { ...draft.thread[0], ref: opts.ref }
     return this.guard(async () => {
       const issue = await this.api.createIssue(issueTitle(draft), renderBody(draft))
       const t: Ticket = { ...draft, id: ticketId(issue.number) }

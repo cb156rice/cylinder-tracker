@@ -33,6 +33,8 @@ export interface EtaSuggestion {
 interface EntryBase {
   at: Instant
   text: string
+  /** Where it came from, so the mail poller never adds it twice: the email's Message-ID, or "report:<submissionId>". */
+  ref?: string
 }
 /** An email on the thread, from Airgas or Rice staff. */
 export interface EmailEntry extends EntryBase {

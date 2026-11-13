@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { decodePayload, encodePayload, makePayload, templateParams } from './sendReport'
+import { decodePayload, encodePayload, makePayload } from './payload'
+import { templateParams } from './sendReport'
 import type { ReportInput } from '../lib/types'
 
 const input: ReportInput = {
