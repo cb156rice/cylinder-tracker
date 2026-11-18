@@ -1,10 +1,12 @@
 // Display helpers for the admin screens: colors for rule outputs and the "Airgas thread" summary.
-import { PEOPLE, deadline, isOverdue, lastAirgasEmail, threadState } from '../lib/rules'
+import { PEOPLE, deadline, isOverdue, lastAirgasEmail, noReplyWarning, threadState } from '../lib/rules'
 import { fmtDay, fmtShort } from '../lib/time'
 import type { Ticket } from '../lib/types'
 
 /** Headline + detail for the queue's "Airgas thread" column. */
-export function threadSummary(t: Ticket): { top: string; sub: string; color: string } {
+export function threadSummary(t: Ticket, now: Date): { top: string; sub: string; color: string; warn?: boolean } {
+  const warned = noReplyWarning(t, now)
+  if (warned) return { top: 'No reply after follow-up', sub: `Followed up ${fmtShort(warned)}`, color: 'var(--red-fg)', warn: true }
   const last = lastAirgasEmail(t)
   const quote = last ? `${PEOPLE[last.from].name}: "${last.text}"` : ''
   switch (threadState(t)) {

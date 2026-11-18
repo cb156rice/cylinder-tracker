@@ -101,7 +101,7 @@ export async function sendOutbox(mail: MailSender, store: GitHubStore, dir: Dire
     let t = t0
     for (const e of unsent(t0, now)) {
       const key = entryKey(e)
-      const what = `${t.id} (${isCheckIn(e) ? 'fix check-in' : e.kind === 'auto' ? 'automatic' : PEOPLE[(e as { from: RiceStaff }).from].name})`
+      const what = `${t.id} (${isCheckIn(e) ? 'fix check-in' : e.kind === 'auto' ? (e.followUp ? 'follow-up' : 'automatic') : PEOPLE[(e as { from: RiceStaff }).from].name})`
       try {
         const out = composeEmail(t, e, dir)
         const mid = `<${t.id.toLowerCase()}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 8)}@cylinder-tracker>`

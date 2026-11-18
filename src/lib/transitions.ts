@@ -1,6 +1,6 @@
 // Ticket state changes. Each takes a ticket and returns a new one (never mutates),
 // appending the thread entries the prototype shows for that change.
-import { PEOPLE, checkInText, isAirgas, suggestEta } from './rules'
+import { PEOPLE, checkInText, followUpText, isAirgas, suggestEta } from './rules'
 import { fmtDay } from './time'
 import type {
   AirgasContact, ResolvedBy, RiceStaff, Ticket, ThreadEntry,
@@ -75,6 +75,11 @@ export function logContact(t: Ticket, by: RiceStaff, kind: 'call' | 'visit', wit
     { ...t, etaSuggestion: suggestEta(t, withWho, body, now) },
     { kind, at: iso(now), from: by, with: withWho, text: body },
   )
+}
+
+/** Airgas hasn't replied in 12 business hours: nudge them on the same thread (sent by the mailer). */
+export function followUp(t: Ticket, now: Date): Ticket {
+  return push(t, { kind: 'auto', at: iso(now), followUp: true, text: followUpText(t) })
 }
 
 /** The "Is it fixed? Reply YES or NO" email to the reporter (sent by the mailer). */

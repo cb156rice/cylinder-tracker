@@ -48,6 +48,8 @@ export interface AutoEntry extends EntryBase {
   kind: 'auto'
   /** 'reporter' = the "Is it fixed?" check-in, emailed to the reporter only. Otherwise it's on the Airgas thread. */
   audience?: 'reporter'
+  /** The automatic follow-up after 12 business hours without a reply from Airgas. */
+  followUp?: boolean
 }
 /** A logged phone call or visit. Kept on the timeline only, never emailed. */
 export interface LogEntry extends EntryBase {

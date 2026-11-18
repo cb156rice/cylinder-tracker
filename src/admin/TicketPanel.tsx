@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, airgasDate, deadline, isCheckIn, isOverdue, locationLabel,
+  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, airgasDate, deadline, isCheckIn, isOverdue, locationLabel, noReplyWarning,
 } from '../lib/rules'
 import { fmt, fmtDay, fmtShort } from '../lib/time'
 import {
@@ -12,6 +12,7 @@ import type { Change } from '../store/store'
 import { Composer } from './Composer'
 import { StatusPill } from './StatusPill'
 import { Thread } from './Thread'
+import { WarnIcon } from './WarnIcon'
 
 /**
  * One ticket. Airgas's replies move it along by themselves; the "next step" card shows the one date
@@ -29,6 +30,7 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
   const dateFromAirgas = airgasDate(t)
   const asked = t.thread.filter(isCheckIn).at(-1)
   const first = t.reporter.name.split(' ')[0]
+  const warned = noReplyWarning(t, now)
   const startClose = () => { setCompleting(true); setDoneBy('airgas'); setDoneNotes('') }
 
   return (
@@ -57,6 +59,15 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
             From {t.reporter.name} (<a href={`mailto:${t.reporter.email}`}>{t.reporter.email}</a>{t.reporter.phone && `, ${t.reporter.phone}`}) · {fmtShort(new Date(t.createdAt))}
           </span>
         </div>
+
+        {warned && (
+          <div className="warn-banner" role="alert">
+            <WarnIcon size={16} />
+            <span>
+              <strong>Airgas hasn't replied, even to the follow-up on {fmt(warned)}.</strong> Consider escalating to Chris (under More options below).
+            </span>
+          </div>
+        )}
 
         {/* ---- Next step ---- */}
         {t.status === 'done' ? (

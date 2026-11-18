@@ -32,7 +32,7 @@ describe('sendOutbox', () => {
     expect(header(sent[0], 'To')).toBe('airgas@example.com')
     expect(header(sent[0], 'Cc')).toBe('staff@example.com')
     expect(header(sent[0], 'In-Reply-To')).toBeNull()
-    expect(body(sent[0])).toContain('would go to: Ruben, Gordan · cc Israel, Wei (reporter)')
+    expect(body(sent[0])).toContain('would go to: Ruben, Gordan · cc Israel, Javier, Wei (reporter)')
     expect(body(sent[0])).toContain('keep [RG-1001] in the subject')
     expect(body(sent[0])).not.toContain('wc@rice.edu>') // the reporter is never a real recipient in demo mode
     expect(sent[0]).not.toMatch(/^(To|Cc):.*wc@rice\.edu/m)

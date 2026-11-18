@@ -209,3 +209,7 @@ a.table__row[aria-current='true'] { background: var(--tint); box-shadow: inset 3
 .msg--rice, .msg--log, .msg--confirm { background: #FAFAF8; border-color: var(--border); }
 .msg--log .msg__tag, .msg--confirm .msg__tag { color: var(--faint); }
 .composer__esc { background: var(--tint); color: var(--body); }
+.warn-banner { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 1px solid oklch(0.85 0.06 25); border-radius: 8px; background: oklch(0.975 0.015 25); color: var(--red-fg); font-size: 13.5px; line-height: 1.45; }
+.warn-banner svg { margin-top: 2px; }
+.warn-banner span { color: var(--body); }
+.warn-banner strong { color: var(--red-fg); }

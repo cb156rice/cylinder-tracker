@@ -65,11 +65,10 @@ export function makeSeed(now: Date): { tickets: Ticket[]; schedule: ScheduleEntr
         note(at(10, 2, 13, 15), "ETA set from Gordan's reply"),
       ] }),
     T({ id: 'RG-1044', reporter: who('Marcus Lee', 'ml77@rice.edu'), order: 'AG-58207730', building: 'oconnor', room: '310', category: 'notdelivered',
-      description: 'Argon order confirmation gave a delivery date that has passed. Nothing at the dock or the lab.', createdAt: at(10, 1, 11, 0),
+      description: 'Argon order confirmation gave a delivery date that has passed. Nothing at the dock or the lab.', createdAt: at(9, 30, 11, 0),
       status: 'open', coordinator: 'robert',
       thread: [
-        { kind: 'auto', at: at(10, 2, 15, 0), text: 'Following up on RG-1044. We are still waiting on an ETA for this order.' },
-        note(at(10, 2, 15, 0), 'No reply in 12 business hours · Javier notified'),
+        { kind: 'auto', at: at(10, 1, 15, 0), followUp: true, text: 'Following up on RG-1044. We are still waiting on an ETA for this order.' },
       ] }),
     T({ id: 'RG-1043', reporter: who('Tom Nguyen', 'tn12@rice.edu', '713-348-9034'), order: 'AG-58201418', building: 'oconnor', room: '205', category: 'other',
       description: "Regulator fitting doesn't match the new helium cylinder. Can't connect it.", createdAt: at(9, 30, 9, 15), status: 'progress',

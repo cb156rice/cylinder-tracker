@@ -87,6 +87,39 @@ export function clock(t: Ticket, now: Date): Clock {
 
 export const isOverdue = (t: Ticket, now: Date) => clock(t, now).over
 
+// ---- No reply from Airgas: follow up, then warn ----
+
+/** The automatic follow-up to Airgas when they haven't replied in time. */
+export const isFollowUp = (e: ThreadEntry) => e.kind === 'auto' && !!e.followUp
+
+/** Airgas hasn't replied within 12 business hours of the report and we haven't followed up yet. */
+export function followUpDue(t: Ticket, now: Date): boolean {
+  return t.status === 'open' && !lastAirgasEmail(t) && !t.thread.some(isFollowUp) && bizMs(new Date(t.createdAt), now) > RESPONSE_LIMIT
+}
+
+export function followUpText(t: Ticket): string {
+  return [
+    'Hi Ruben and Gordan,',
+    '',
+    `Following up on ${problemPhrase(t)} (order ${t.order}), reported ${niceDay(new Date(t.createdAt))}. We haven't seen a reply yet.`,
+    '',
+    'Could you reply all with next steps and the date you expect it to be taken care of?',
+    '',
+    'Thanks,',
+    'Rice Stockroom',
+  ].join('\n')
+}
+
+/** We followed up and Airgas still hasn't replied after another 12 business hours: the follow-up's time, else null. */
+export function noReplyWarning(t: Ticket, now: Date): Date | null {
+  if (t.status === 'done') return null
+  const f = t.thread.filter(isFollowUp).at(-1)
+  if (!f) return null
+  const last = lastAirgasEmail(t)
+  if (last && new Date(last.at) >= new Date(f.at)) return null
+  return bizMs(new Date(f.at), now) >= RESPONSE_LIMIT ? new Date(f.at) : null
+}
+
 /** The automatic "Is it fixed?" email to the reporter (an auto entry addressed to the reporter only). */
 export const isCheckIn = (e: ThreadEntry) => e.kind === 'auto' && e.audience === 'reporter'
 
@@ -247,11 +280,14 @@ export function lastMessage(t: Ticket): ThreadEntry | null {
   return null
 }
 
-/** Who gets the next email: Airgas contacts on To; coordinator, other Rice staff and the reporter on Cc. */
+/**
+ * Who gets the next email: Airgas contacts on To; the coordinator, Javier (always, as supervisor),
+ * other Rice staff and the reporter on Cc.
+ */
 export function recipients(t: Ticket, escalating = false): { to: AirgasContact[]; cc: RiceStaff[] } {
   const to = t.participants.filter((p): p is AirgasContact => AIRGAS_CONTACTS.includes(p as AirgasContact))
   if (escalating && !to.includes('chris')) to.push('chris')
-  const cc = [...new Set([t.coordinator, ...t.participants.filter((p): p is RiceStaff => RICE_STAFF.includes(p as RiceStaff))])]
+  const cc = [...new Set<RiceStaff>([t.coordinator, 'javier', ...t.participants.filter((p): p is RiceStaff => RICE_STAFF.includes(p as RiceStaff))])]
   return { to, cc }
 }
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   clock, coordinatorFor, createTicket, deadline, locationLabel,
-  checkInDue, checkInText, fixDue, nextTicketId, openingSubject, recipients, threadState, validateReport,
+  checkInDue, checkInText, fixDue, followUpDue, noReplyWarning, nextTicketId, openingSubject, recipients, threadState, validateReport,
 } from './rules'
-import { askFixed } from './transitions'
+import { askFixed, followUp, receiveEmail } from './transitions'
 import { fromWall } from './time'
 import type { ReportInput, Ticket } from './types'
 
@@ -72,6 +72,28 @@ describe('due dates', () => {
   })
 })
 
+describe('no reply from Airgas', () => {
+  const t = ticket({}, ct(10, 1, 11)) // reply due Fri Oct 2, 3 PM
+  it('follows up once, after 12 business hours without a reply', () => {
+    expect(followUpDue(t, ct(10, 2, 14))).toBe(false)
+    expect(followUpDue(t, ct(10, 2, 15, 30))).toBe(true)
+    const f = followUp(t, ct(10, 2, 15, 30))
+    expect(f.thread.at(-1)).toMatchObject({ kind: 'auto', followUp: true })
+    expect(f.thread.at(-1)?.text).toContain('Following up on the leaking cylinder in SST 214')
+    expect(followUpDue(f, NOW)).toBe(false)
+    const replied = receiveEmail(t, 'gordan', 'On it.', ct(10, 2, 12))
+    expect(followUpDue(replied, NOW)).toBe(false)
+  })
+  it('warns when the follow-up also gets no reply for 12 business hours', () => {
+    const f = followUp(t, ct(10, 2, 15, 30)) // 12 business hours later: Tue Oct 6, 11:30 AM
+    expect(noReplyWarning(f, NOW)).toBeNull() // Mon 2:30 PM
+    expect(noReplyWarning(f, ct(10, 6, 11))).toBeNull()
+    expect(noReplyWarning(f, ct(10, 6, 11, 30))).toEqual(ct(10, 2, 15, 30))
+    expect(noReplyWarning(receiveEmail(f, 'ruben', 'Sorry, checking.', ct(10, 5, 9)), ct(10, 6, 12))).toBeNull()
+    expect(noReplyWarning({ ...f, status: 'done' }, ct(10, 6, 12))).toBeNull()
+  })
+})
+
 describe('"Is it fixed?" check-in', () => {
   const t = ticket({ status: 'progress' }, ct(10, 1, 11)) // fix due Mon Oct 5, 11 AM
   it('asks once the fix due date has passed, during business hours', () => {
@@ -106,6 +128,8 @@ describe('thread', () => {
   it('puts Airgas on To and Rice on Cc', () => {
     const t = ticket({ participants: ['ruben', 'gordan', 'javier'] })
     expect(recipients(t)).toEqual({ to: ['ruben', 'gordan'], cc: ['israel', 'javier'] })
+    expect(recipients(ticket()).cc).toEqual(['israel', 'javier']) // Javier is always copied
+    expect(recipients(ticket({ coordinator: 'javier' })).cc).toEqual(['javier'])
     expect(recipients(t, true).to).toEqual(['ruben', 'gordan', 'chris'])
   })
 })
