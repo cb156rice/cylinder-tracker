@@ -2,22 +2,12 @@ import { PEOPLE, authorName, isAirgas } from '../lib/rules'
 import { fmtShort } from '../lib/time'
 import type { ThreadEntry, Ticket } from '../lib/types'
 
-/** Participant chips, then the timeline: emails, auto-sent messages, call logs, confirmations, notes. */
+/** The timeline: emails, auto-sent messages, call logs, confirmations, notes. */
 export function Thread({ ticket: t }: { ticket: Ticket }) {
-  const chips = [
-    ...t.participants.map(p => ({ label: `${PEOPLE[p].name} · ${PEOPLE[p].role.split(' · ')[1]}`, airgas: isAirgas(p) })),
-    ...(t.participants.includes(t.coordinator) ? [] : [{ label: `${PEOPLE[t.coordinator].name} · coordinator`, airgas: false }]),
-    { label: `${t.reporter.name.split(' ')[0]} · reporter`, airgas: false },
-  ]
   return (
-    <>
-      <div className="chips">
-        {chips.map(c => <span key={c.label} className={'chip' + (c.airgas ? ' chip--airgas' : '')}>{c.label}</span>)}
-      </div>
-      <ol className="timeline">
-        {t.thread.map((e, i) => <Entry key={i} e={e} t={t} first={i === 0} />)}
-      </ol>
-    </>
+    <ol className="timeline">
+      {t.thread.map((e, i) => <Entry key={i} e={e} t={t} first={i === 0} />)}
+    </ol>
   )
 }
 
