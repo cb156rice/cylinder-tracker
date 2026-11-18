@@ -7,7 +7,7 @@ const STEPS: [string, ReactNode][] = [
   </>],
   ['Airgas replies', 'Every reply-all lands on the ticket within about 15 minutes. The first reply from Airgas moves the ticket to In progress by itself. If a reply has a date ("tomorrow", "Friday"), it becomes the expected date; the lead can ignore it if it was read wrong.'],
   ['Due dates', 'Airgas has 12 business hours to reply. After that, the fix is due on the date Airgas gave, or 2 business days after the report if they never gave one. Late tickets are marked Late in the queue.'],
-  ['Is it fixed?', 'When the fix due date passes, the reporter gets an email: "Is it fixed? Reply YES or NO." YES closes the ticket. NO tells Airgas on the thread and waits for a new date. This also catches fixes Airgas makes without replying.'],
+  ['Is it fixed?', "The morning after the fix due date, the reporter gets a short email asking if it's fixed, answered with one word. YES closes the ticket. NO tells Airgas on the thread and waits for a new date. This also catches fixes Airgas makes without replying."],
   ['Rice steps in', <span key="b">Anyone can reply on the thread, close a ticket with <strong>Mark fixed</strong>, or under <strong>More options</strong> escalate to Chris or write down a phone call or visit (kept on the ticket, never emailed).</span>],
 ]
 

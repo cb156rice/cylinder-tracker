@@ -70,7 +70,7 @@ describe('sendOutbox', () => {
     await store.update('RG-1001', (t, n) => askFixed(t, n))
     const r = await sendOutbox(box, store, DIR, NOW, () => {})
     expect(r.sent).toEqual(['RG-1001 (fix check-in)'])
-    expect(header(sent[1], 'Subject')).toBe('[RG-1001] Is it fixed? Reply YES or NO')
+    expect(header(sent[1], 'Subject')).toBe('[RG-1001] Quick check: is the leaking cylinder in SST 315 fixed?')
     expect(header(sent[1], 'To')).toBe('staff@example.com')
     expect(header(sent[1], 'Cc')).toBeNull()
     expect(header(sent[1], 'In-Reply-To')).toBeNull()

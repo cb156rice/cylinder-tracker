@@ -103,10 +103,46 @@ export function checkInDue(t: Ticket, now: Date): boolean {
   return !asked || new Date(asked.at) < due
 }
 
+/** How the check-in email names the problem: "the leak in SST 315". */
+const PROBLEM_PHRASE: Record<Category, string> = {
+  leak: 'the leaking cylinder',
+  notdelivered: 'the missed delivery',
+  empty: 'the empty cylinder',
+  other: 'the cylinder problem',
+}
+export const problemPhrase = (t: Ticket) => `${PROBLEM_PHRASE[t.category]} in ${locationLabel(t)}`
+
+const niceDay = (x: Date | DateKey) => fmtDay(x).replace(' ', ', ') // "Wed, Nov 18"
+
+/** Subject of the check-in. Replies keep "fixed?" in the subject, which is how the poller recognizes them. */
+export const checkInSubject = (t: Ticket) => `[${t.id}] Quick check: is ${problemPhrase(t)} fixed?`
+
 export function checkInText(t: Ticket): string {
-  return `Hi ${t.reporter.name.split(' ')[0] || t.reporter.name},\n\n` +
-    `You reported a problem on ${fmtDay(new Date(t.createdAt))}: ${CATEGORY_LABEL[t.category].toLowerCase()} at ${locationLabel(t)} (order ${t.order}).\n\n` +
-    'Is it fixed now? Please reply YES or NO to this email. If it is not fixed, add a sentence about what is still wrong.'
+  const name = t.reporter.name.split(' ')[0] || t.reporter.name
+  const date = airgasDate(t)
+  const promise = date
+    ? `Airgas said it would be taken care of by ${niceDay(date)}.`
+    : 'Airgas was asked to take care of it within 2 business days.'
+  const desc = t.description.length > 200 ? t.description.slice(0, 197).trimEnd() + '…' : t.description
+  return [
+    `Hi ${name},`,
+    '',
+    `On ${niceDay(new Date(t.createdAt))} you reported ${problemPhrase(t)}:`,
+    `"${desc}"`,
+    '',
+    `${promise} Is it fixed now?`,
+    '',
+    'Just reply to this email with one word:',
+    '',
+    "  YES  It's fixed. We'll close the ticket.",
+    "  NO   It's still a problem. We'll follow up with Airgas right away.",
+    '',
+    "If it's a NO, a line about what's still wrong helps.",
+    '',
+    'Thanks,',
+    'Rice Stockroom',
+    `Ticket ${t.id} · Order ${t.order}`,
+  ].join('\n')
 }
 
 // ---- Routing and new tickets ----

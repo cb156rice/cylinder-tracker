@@ -6,7 +6,7 @@
 // email starts with a "would go to" line naming the real recipients.
 import { config } from '../src/config'
 import { entryKey, threadMessageIds, unsent } from '../src/lib/outbox'
-import { PEOPLE, isCheckIn, openingSubject, recipients } from '../src/lib/rules'
+import { PEOPLE, checkInSubject, isCheckIn, openingSubject, recipients } from '../src/lib/rules'
 import type { RiceStaff, ThreadEntry, Ticket } from '../src/lib/types'
 import type { GitHubStore } from '../src/store/githubStore'
 import type { Directory } from './parse'
@@ -31,8 +31,6 @@ export interface Outgoing {
   reporterOnly?: boolean
 }
 
-export const checkInSubject = (t: Ticket) => `[${t.id}] Is it fixed? Reply YES or NO`
-
 /** Pure: what to send for one entry. */
 export function composeEmail(t: Ticket, e: ThreadEntry, dir: Directory): Outgoing {
   const r = recipients(t)
@@ -41,7 +39,7 @@ export function composeEmail(t: Ticket, e: ThreadEntry, dir: Directory): Outgoin
   if (isCheckIn(e)) {
     // Just the reporter, as its own email (not on the Airgas thread).
     const wouldGoTo = `${first} (reporter)`
-    const text = [`[DEMO] In real use this would go to: ${t.reporter.name} <${t.reporter.email}>`, '', e.text, '', '--', `Rice Stockroom cylinder tracker · ticket ${t.id}`].join('\n')
+    const text = [`[DEMO] In real use this would go to: ${t.reporter.name} <${t.reporter.email}>`, '', e.text].join('\n')
     return { to: [dir.staff[0]], cc: [], subject: checkInSubject(t), text, inReplyTo: null, references: [], wouldGoTo, reporterOnly: true }
   }
 

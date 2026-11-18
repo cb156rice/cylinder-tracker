@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   clock, coordinatorFor, createTicket, deadline, locationLabel,
-  checkInDue, fixDue, nextTicketId, openingSubject, recipients, threadState, validateReport,
+  checkInDue, checkInText, fixDue, nextTicketId, openingSubject, recipients, threadState, validateReport,
 } from './rules'
 import { askFixed } from './transitions'
 import { fromWall } from './time'
@@ -84,7 +84,9 @@ describe('"Is it fixed?" check-in', () => {
     const asked = askFixed(t, NOW)
     expect(asked.confirm).toBe('asked')
     expect(asked.thread.at(-1)).toMatchObject({ kind: 'auto', audience: 'reporter' })
-    expect(asked.thread.at(-1)?.text).toContain('Please reply YES or NO')
+    expect(asked.thread.at(-1)?.text).toContain('Just reply to this email with one word')
+    expect(asked.thread.at(-1)?.text).toContain('Airgas was asked to take care of it within 2 business days.')
+    expect(checkInText({ ...asked, eta: '2026-10-08' })).toContain('Airgas said it would be taken care of by Thu, Oct 8.')
     expect(checkInDue(asked, ct(10, 6, 12))).toBe(false)
     expect(checkInDue({ ...asked, eta: '2026-10-08' }, ct(10, 9, 10))).toBe(true)
     expect(checkInDue({ ...t, status: 'done' }, NOW)).toBe(false)

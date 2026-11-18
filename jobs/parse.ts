@@ -15,7 +15,7 @@ export function ticketNumberInSubject(subject: string): number | null {
 }
 
 /** A reply to the "Is it fixed?" email: its subject keeps that question. */
-export const isCheckInReply = (subject: string) => /Is it fixed\?/i.test(subject)
+export const isCheckInReply = (subject: string) => /\bfixed\?/i.test(subject)
 
 /** YES → true, NO → false, anything else → null. Only the first words count (the rest is quoted text or a note). */
 export function fixAnswer(text: string): boolean | null {

@@ -4,7 +4,7 @@ import {
 } from '../lib/rules'
 import { fmt, fmtDay, fmtShort } from '../lib/time'
 import {
-  acceptEta, complete, ignoreEta, reopen, setCoordinator, startProgress,
+  acceptEta, complete, ignoreEta, reopen, setCoordinator,
 } from '../lib/transitions'
 import type { ResolvedBy, RiceStaff, Ticket } from '../lib/types'
 import { useStore } from '../store/hooks'
@@ -104,9 +104,7 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
               {t.confirm === 'no' && ` ${first} said it's not fixed yet.`}
             </span>
             <div className="row-between" style={{ alignItems: 'center' }}>
-              {t.status === 'open'
-                ? <button className="link-btn link-btn--muted" onClick={() => apply((x, n) => startProgress(x, viewer, n))}>Airgas is on it (by phone)</button>
-                : <span />}
+              <span />
               <button className="btn btn--sm btn--primary" onClick={startClose}>Mark fixed</button>
             </div>
           </div>
