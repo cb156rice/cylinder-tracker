@@ -1,47 +1,35 @@
 import { useState } from 'react'
 import {
-  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, deadline, isOverdue, locationLabel,
+  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, airgasDate, deadline, isCheckIn, isOverdue, locationLabel,
 } from '../lib/rules'
-import { fmt, fmtDay, fmtShort, sameDay } from '../lib/time'
+import { fmt, fmtDay, fmtShort } from '../lib/time'
 import {
-  acceptEta, complete, ignoreEta, reopen, setComplexity, setCoordinator, startProgress,
+  acceptEta, complete, ignoreEta, reopen, setCoordinator, startProgress,
 } from '../lib/transitions'
-import type { Complexity, ResolvedBy, RiceStaff, ScheduleEntry, Ticket } from '../lib/types'
+import type { ResolvedBy, RiceStaff, Ticket } from '../lib/types'
 import { useStore } from '../store/hooks'
 import type { Change } from '../store/store'
-import { scheduleAskDraft } from '../lib/draft'
 import { Composer } from './Composer'
 import { StatusPill } from './StatusPill'
 import { Thread } from './Thread'
 
-const SIZE: Record<Complexity, [string, string]> = {
-  low: ['Small', 'Should take about 12 business hours'],
-  medium: ['Medium', 'About 2 business days'],
-  high: ['Big', 'About 1 business week'],
-}
-
 /**
- * One ticket. The "next step" card shows only the action that fits the ticket's state
- * (start → pick size → complete → reopen); everything else is reading.
+ * One ticket. Airgas's replies move it along by themselves; the "next step" card shows the one date
+ * that matters and the one action Rice might take (mark fixed, or reopen).
  */
-export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: { ticket: Ticket; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; ask: string | null; onClose: () => void }) {
+export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticket; now: Date; viewer: RiceStaff; onClose: () => void }) {
   const store = useStore()
   const [completing, setCompleting] = useState(false)
-  const [resizing, setResizing] = useState(false)
   const [doneBy, setDoneBy] = useState<ResolvedBy>('airgas')
   const [doneNotes, setDoneNotes] = useState('')
 
   const apply = (change: Change) => store.update(t.id, change)
   const due = deadline(t)
   const late = isOverdue(t, now)
-
-  const onSchedule = schedule.some(r => r.order === t.order && sameDay(r.date, now))
-  const etaNote = !t.eta ? null
-    : sameDay(t.eta, now)
-      ? onSchedule ? { text: "On today's delivery schedule", color: 'var(--muted)' } : { text: "Not on today's schedule", color: 'var(--muted)' }
-      : { text: "We'll check that day's schedule", color: 'var(--muted)' }
-
-  const pickSize = t.status === 'progress' && (!t.complexity || resizing)
+  const dateFromAirgas = airgasDate(t)
+  const asked = t.thread.filter(isCheckIn).at(-1)
+  const first = t.reporter.name.split(' ')[0]
+  const startClose = () => { setCompleting(true); setDoneBy('airgas'); setDoneNotes('') }
 
   return (
     <aside className="card panel" aria-label={`Ticket ${t.id}`}>
@@ -76,7 +64,7 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
             <span className="strong" style={{ fontSize: 14 }}>
               Fixed by {t.resolvedBy ? RESOLVER_LABEL[t.resolvedBy] : '—'}{t.resolvedAt && ` · ${fmt(new Date(t.resolvedAt))}`}
             </span>
-            {t.confirm === 'yes' && <span className="muted">The lab confirmed it's fixed.</span>}
+            {t.confirm === 'yes' && <span className="muted">{first} confirmed it's fixed.</span>}
             {t.resolutionNotes && <span style={{ lineHeight: 1.5 }}>{t.resolutionNotes}</span>}
             <button className="link-btn" onClick={() => apply((x, n) => reopen(x, n))}>Not fixed after all? Reopen</button>
           </div>
@@ -98,20 +86,6 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
               <button className="btn btn--sm btn--primary" onClick={() => { apply((x, n) => complete(x, doneBy, doneNotes, n)); setCompleting(false) }}>Close ticket</button>
             </div>
           </div>
-        ) : pickSize ? (
-          <div className="nextstep">
-            <span className="strong" style={{ fontSize: 14 }}>How big is the fix?</span>
-            <span className="muted" style={{ fontSize: 13 }}>This sets how long Airgas has before it counts as late.</span>
-            <div className="stack" style={{ gap: 6 }}>
-              {(['low', 'medium', 'high'] as Complexity[]).map(k => (
-                <button key={k} className="choice" aria-pressed={t.complexity === k}
-                  onClick={() => { if (t.complexity !== k) apply((x, n) => setComplexity(x, k, n)); setResizing(false) }}>
-                  <span className="strong">{SIZE[k][0]}</span><span className="muted">{SIZE[k][1]}</span>
-                </button>
-              ))}
-            </div>
-            {resizing && <button className="link-btn" onClick={() => setResizing(false)}>Cancel</button>}
-          </div>
         ) : (
           <div className="nextstep">
             <div className="row-between" style={{ alignItems: 'baseline' }}>
@@ -120,14 +94,21 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
               </span>
               {late && <span className="late-tag">Late</span>}
             </div>
-            {t.status === 'open'
-              ? <div className="row-end"><button className="btn btn--sm btn--primary" onClick={() => apply((x, n) => startProgress(x, viewer, n))}>Mark in progress</button></div>
-              : (
-                <div className="row-between" style={{ alignItems: 'center' }}>
-                  <button className="link-btn link-btn--muted" onClick={() => setResizing(true)}>Size: {SIZE[t.complexity!][0]} · change</button>
-                  <button className="btn btn--sm btn--primary" onClick={() => { setCompleting(true); setDoneBy('airgas'); setDoneNotes('') }}>Mark fixed</button>
-                </div>
-              )}
+            <span className="muted" style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+              {t.status === 'open'
+                ? 'Moves to In progress by itself when Airgas replies.'
+                : dateFromAirgas
+                  ? `The date Airgas gave (${fmtDay(dateFromAirgas)}). After it, we ask ${first} if it's fixed.`
+                  : `Airgas hasn't given a date, so it's 2 business days after the report. After it, we ask ${first} if it's fixed.`}
+              {asked && t.confirm === 'asked' && ` Asked ${first} on ${fmtShort(new Date(asked.at))}; waiting for a YES or NO.`}
+              {t.confirm === 'no' && ` ${first} said it's not fixed yet.`}
+            </span>
+            <div className="row-between" style={{ alignItems: 'center' }}>
+              {t.status === 'open'
+                ? <button className="link-btn link-btn--muted" onClick={() => apply((x, n) => startProgress(x, viewer, n))}>Airgas is on it (by phone)</button>
+                : <span />}
+              <button className="btn btn--sm btn--primary" onClick={startClose}>Mark fixed</button>
+            </div>
           </div>
         )}
 
@@ -142,19 +123,12 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
           </div>
         )}
 
-        {t.eta && t.status !== 'done' && etaNote && (
-          <div className="eta-box">
-            <span className="stack" style={{ gap: 2 }}><span className="faint" style={{ fontSize: 12 }}>Expected</span><span style={{ fontSize: 15, fontWeight: 700 }}>{fmtDay(t.eta)}</span></span>
-            <span style={{ fontSize: 13, fontWeight: 500, color: etaNote.color, textAlign: 'right' }}>{etaNote.text}</span>
-          </div>
-        )}
-
         <div className="stack" style={{ gap: 10 }}>
           <span className="label">Emails with Airgas</span>
           <Thread ticket={t} now={now} />
         </div>
 
-        {t.status !== 'done' && <Composer ticket={t} viewer={viewer} initialDraft={ask === 'schedule' ? scheduleAskDraft(t, viewer) : ''} />}
+        {t.status !== 'done' && <Composer ticket={t} viewer={viewer} />}
       </div>
     </aside>
   )

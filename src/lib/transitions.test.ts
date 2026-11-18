@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createTicket } from './rules'
 import { fromWall } from './time'
 import {
-  acceptEta, complete, confirmDelivery, logContact, receiveEmail, reopen, sendEmail, setComplexity, startProgress,
+  acceptEta, complete, confirmDelivery, logContact, receiveEmail, reopen, sendEmail, startProgress,
 } from './transitions'
 
 const NOW = fromWall(2026, 10, 5, 14, 30)
@@ -13,9 +13,9 @@ const base = createTicket(
 
 describe('transitions', () => {
   it('moves through the lifecycle with notes', () => {
-    const p = setComplexity(startProgress(base, 'robert', NOW), 'high', NOW)
-    expect(p).toMatchObject({ status: 'progress', complexity: 'high', startedAt: NOW.toISOString() })
-    expect(p.thread.slice(-2).map(e => e.text)).toEqual(['Robert moved to In progress', 'Complexity set to High'])
+    const p = startProgress(base, 'robert', NOW)
+    expect(p).toMatchObject({ status: 'progress', startedAt: NOW.toISOString() })
+    expect(p.thread.at(-1)?.text).toBe('Robert moved to In progress')
     const d = complete(p, 'airgas', '', NOW)
     expect(d).toMatchObject({ status: 'done', resolvedBy: 'airgas', resolutionNotes: '(No notes)' })
     expect(reopen(d, NOW)).toMatchObject({ status: 'open', resolvedBy: null, complexity: null })
@@ -26,7 +26,11 @@ describe('transitions', () => {
     const r = receiveEmail(base, 'ruben', "It's on today's truck.", NOW, ['chris'])
     expect(r.etaSuggestion).toEqual({ date: '2026-10-05', quote: "It's on today's truck.", from: 'ruben' })
     expect(r.participants).toContain('chris')
-    expect(r.thread.at(-1)).toMatchObject({ kind: 'email', from: 'ruben', added: ['chris'] })
+    expect(r.thread.at(-2)).toMatchObject({ kind: 'email', from: 'ruben', added: ['chris'] })
+    // Airgas's first reply moves the ticket along by itself.
+    expect(r).toMatchObject({ status: 'progress', startedAt: NOW.toISOString() })
+    expect(r.thread.at(-1)?.text).toBe('Ruben replied · moved to In progress')
+    expect(receiveEmail(base, 'israel', 'Checking.', NOW).status).toBe('open')
     const a = acceptEta(r, NOW)
     expect(a).toMatchObject({ eta: '2026-10-05', etaSuggestion: null })
     expect(a.thread.at(-1)?.text).toBe("ETA set to Mon Oct 5 from Ruben's reply")
@@ -56,8 +60,8 @@ describe('transitions', () => {
   it('reopens on a lab NO and tells Airgas', () => {
     const t = { ...base, status: 'progress' as const, eta: '2026-10-05' }
     const n = confirmDelivery(t, false, NOW)
-    expect(n).toMatchObject({ status: 'progress', confirm: 'no', eta: null })
+    expect(n).toMatchObject({ status: 'progress', confirm: 'no', eta: null, etaSuggestion: null })
     expect(n.thread.map(e => e.kind).slice(-3)).toEqual(['confirm', 'auto', 'note'])
-    expect(n.thread.at(-2)?.text).toContain('Marcus Lee reports the issue is not fixed')
+    expect(n.thread.at(-2)?.text).toContain('Marcus Lee says this is still not fixed')
   })
 })

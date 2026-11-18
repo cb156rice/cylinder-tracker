@@ -9,11 +9,6 @@ export function templateDraft(t: Ticket, me: RiceStaff, escalating: boolean, not
   return `${greet} (${t.id}, order ${t.order}, ${locationLabel(t)}). ${notes.trim() || 'Could you share an ETA for a fix?'}\n\nThanks,\n${PEOPLE[me].name}\nRice Stockroom`
 }
 
-/** Pre-filled question when a promised delivery is missing from today's schedule. */
-export function scheduleAskDraft(t: Ticket, me: RiceStaff): string {
-  return `Hi Ruben and Gordan,\n\nOrder ${t.order} (${t.id}, ${locationLabel(t)}) was promised for today, but it isn't on today's delivery schedule. Is it still going out today? If not, when should we expect it?\n\nThanks,\n${PEOPLE[me].name}\nRice Stockroom`
-}
-
 /** The system and user prompts from the prototype's draftAi(). */
 export function draftPrompt(t: Ticket, me: RiceStaff, escalating: boolean, notes: string, now: Date): { system: string; user: string } {
   const thread = t.thread

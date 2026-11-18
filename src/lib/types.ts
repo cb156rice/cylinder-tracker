@@ -15,7 +15,7 @@ export type AirgasContact = 'ruben' | 'gordan' | 'chris'
 /** Everyone who can appear on a thread. 'tracker' is the automatic sender. */
 export type PersonId = RiceStaff | AirgasContact | 'tracker'
 export type ResolvedBy = RiceStaff | 'airgas'
-/** Delivery confirmation: null = not asked yet. */
+/** "Is it fixed?" check-in with the reporter: null = not asked yet. */
 export type ConfirmState = null | 'asked' | 'yes' | 'no'
 
 export interface Reporter {
@@ -46,6 +46,8 @@ export interface EmailEntry extends EntryBase {
 /** An email the tracker sent on its own (opening email, follow-ups). */
 export interface AutoEntry extends EntryBase {
   kind: 'auto'
+  /** 'reporter' = the "Is it fixed?" check-in, emailed to the reporter only. Otherwise it's on the Airgas thread. */
+  audience?: 'reporter'
 }
 /** A logged phone call or visit. Kept on the timeline only, never emailed. */
 export interface LogEntry extends EntryBase {
@@ -78,8 +80,9 @@ export interface Ticket {
   createdAt: Instant
 
   status: Status
+  /** No longer used (tickets used to have a size). Kept so older tickets still load. */
   complexity: Complexity | null
-  /** When the resolution clock started (moved to In progress or complexity changed). */
+  /** When the ticket moved to In progress. */
   startedAt: Instant | null
   coordinator: RiceStaff
   /** People on the email thread besides the reporter and the tracker. */

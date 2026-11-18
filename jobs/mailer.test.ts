@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromWall } from '../src/lib/time'
-import { sendEmail } from '../src/lib/transitions'
+import { askFixed, sendEmail } from '../src/lib/transitions'
 import { fakeGitHub } from '../src/store/fakeGitHub'
 import { GitHubStore } from '../src/store/githubStore'
 import { sendOutbox, type MailSender } from './mailer'
@@ -60,5 +60,25 @@ describe('sendOutbox', () => {
     expect((await sendOutbox(box, store, { airgas: [], staff: ['s@x.com'] }, NOW, () => {})).sent).toEqual([])
     expect(sent).toHaveLength(0)
     expect((await sendOutbox(box, store, DIR, NOW, () => {})).sent).toEqual(['RG-1002 (automatic)'])
+  })
+
+  it('sends the "Is it fixed?" check-in to the reporter only, off the Airgas thread', async () => {
+    const store = new GitHubStore(fakeGitHub().api(), () => NOW)
+    await store.create(REPORT, { at: new Date(NOW.getTime() - 3600_000), ref: 'report:s1' })
+    const { box, sent } = fakeSender()
+    await sendOutbox(box, store, DIR, NOW, () => {})
+    await store.update('RG-1001', (t, n) => askFixed(t, n))
+    const r = await sendOutbox(box, store, DIR, NOW, () => {})
+    expect(r.sent).toEqual(['RG-1001 (fix check-in)'])
+    expect(header(sent[1], 'Subject')).toBe('[RG-1001] Is it fixed? Reply YES or NO')
+    expect(header(sent[1], 'To')).toBe('staff@example.com')
+    expect(header(sent[1], 'Cc')).toBeNull()
+    expect(header(sent[1], 'In-Reply-To')).toBeNull()
+    expect(body(sent[1])).toContain('would go to: Wei Chen <wc@rice.edu>')
+
+    // The next Airgas email still threads onto the opening email, not the check-in.
+    await store.update('RG-1001', (t, n) => sendEmail(t, 'israel', 'Update?', n))
+    await sendOutbox(box, store, DIR, NOW, () => {})
+    expect(header(sent[2], 'In-Reply-To')).toBe('<g1@mail.gmail.com>')
   })
 })

@@ -14,6 +14,17 @@ export function ticketNumberInSubject(subject: string): number | null {
   return m ? Number(m[1]) : null
 }
 
+/** A reply to the "Is it fixed?" email: its subject keeps that question. */
+export const isCheckInReply = (subject: string) => /Is it fixed\?/i.test(subject)
+
+/** YES → true, NO → false, anything else → null. Only the first words count (the rest is quoted text or a note). */
+export function fixAnswer(text: string): boolean | null {
+  const first = text.trim().split(/\s+/).slice(0, 3).join(' ').toLowerCase()
+  if (/^(yes|yep|yeah|y|fixed)\b/.test(first)) return true
+  if (/^(no|nope|n|not)\b/.test(first)) return false
+  return null
+}
+
 /** The report payload from an EmailJS "[NEW REPORT]" email, or null if this isn't one. */
 export function reportFromEmail(subject: string, body: string): ReportPayload | null {
   if (!/\[NEW REPORT\]/i.test(subject)) return null

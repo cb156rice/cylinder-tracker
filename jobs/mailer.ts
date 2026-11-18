@@ -6,7 +6,7 @@
 // email starts with a "would go to" line naming the real recipients.
 import { config } from '../src/config'
 import { entryKey, threadMessageIds, unsent } from '../src/lib/outbox'
-import { PEOPLE, openingSubject, recipients } from '../src/lib/rules'
+import { PEOPLE, isCheckIn, openingSubject, recipients } from '../src/lib/rules'
 import type { RiceStaff, ThreadEntry, Ticket } from '../src/lib/types'
 import type { GitHubStore } from '../src/store/githubStore'
 import type { Directory } from './parse'
@@ -27,12 +27,24 @@ export interface Outgoing {
   references: string[]
   /** Who it would go to outside demo mode, for the note on the ticket. */
   wouldGoTo: string
+  /** The "Is it fixed?" check-in: not part of the Airgas thread, so later emails don't thread onto it. */
+  reporterOnly?: boolean
 }
+
+export const checkInSubject = (t: Ticket) => `[${t.id}] Is it fixed? Reply YES or NO`
 
 /** Pure: what to send for one entry. */
 export function composeEmail(t: Ticket, e: ThreadEntry, dir: Directory): Outgoing {
   const r = recipients(t)
   const first = (t.reporter.name.split(' ')[0] || t.reporter.name).trim()
+
+  if (isCheckIn(e)) {
+    // Just the reporter, as its own email (not on the Airgas thread).
+    const wouldGoTo = `${first} (reporter)`
+    const text = [`[DEMO] In real use this would go to: ${t.reporter.name} <${t.reporter.email}>`, '', e.text, '', '--', `Rice Stockroom cylinder tracker · ticket ${t.id}`].join('\n')
+    return { to: [dir.staff[0]], cc: [], subject: checkInSubject(t), text, inReplyTo: null, references: [], wouldGoTo, reporterOnly: true }
+  }
+
   const wouldGoTo = `${r.to.map(p => PEOPLE[p].name).join(', ') || 'nobody at Airgas'} · cc ${[...r.cc.map(p => PEOPLE[p].name), `${first} (reporter)`].join(', ')}`
 
   const airgas = dir.airgas[0], staff = dir.staff[0]
@@ -91,7 +103,7 @@ export async function sendOutbox(mail: MailSender, store: GitHubStore, dir: Dire
     let t = t0
     for (const e of unsent(t0, now)) {
       const key = entryKey(e)
-      const what = `${t.id} (${e.kind === 'auto' ? 'automatic' : PEOPLE[(e as { from: RiceStaff }).from].name})`
+      const what = `${t.id} (${isCheckIn(e) ? 'fix check-in' : e.kind === 'auto' ? 'automatic' : PEOPLE[(e as { from: RiceStaff }).from].name})`
       try {
         const out = composeEmail(t, e, dir)
         const mid = `<${t.id.toLowerCase()}.${Date.now().toString(36)}.${Math.random().toString(36).slice(2, 8)}@cylinder-tracker>`
@@ -99,7 +111,7 @@ export async function sendOutbox(mail: MailSender, store: GitHubStore, dir: Dire
         const messageId = (await mail.messageIdOf(id).catch(() => '')) || mid
         t = await store.update(t.id, (x, n) => ({
           ...x,
-          thread: [...x.thread, { kind: 'note', at: n.toISOString(), text: `Emailed ${out.wouldGoTo}`, ref: `sent:${key}`, messageId }],
+          thread: [...x.thread, { kind: 'note', at: n.toISOString(), text: `Emailed ${out.wouldGoTo}`, ref: `sent:${key}`, ...(out.reporterOnly ? {} : { messageId }) }],
         }))
         result.sent.push(what)
         log(`  ✉ ${what} sent`)

@@ -1,9 +1,9 @@
 // Business rules, ported from the prototype (design/Cylinder Issue Tracker v2.dc.html).
 // Pure functions only: no React, no storage, no styling. The UI maps `tone` values to colors.
 import { detectEta } from './eta'
-import { HOUR, addBiz, bizMs, dur, sameDay, type DateKey } from './time'
+import { HOUR, addBiz, bizMs, fmtDay, fromWall, sameDay, type DateKey } from './time'
 import type {
-  AirgasContact, Building, Category, Complexity, EtaSuggestion, PersonId, ReportInput,
+  AirgasContact, Building, Category, EtaSuggestion, PersonId, ReportInput,
   ResolvedBy, RiceStaff, Status, Ticket, ThreadEntry,
 } from './types'
 
@@ -43,49 +43,70 @@ export const STATUS_LABEL: Record<Status, string> = { open: 'Not started', progr
 
 // ---- Deadlines ----
 
-/** Business time allowed to move a new ticket to In progress. */
+/** Business time Airgas has to reply to a new ticket. */
 export const RESPONSE_LIMIT = 12 * HOUR
-/** Business time allowed to resolve, by complexity. */
-export const RESOLVE_LIMIT: Record<Complexity, number> = { low: 12 * HOUR, medium: 16 * HOUR, high: 40 * HOUR }
-export const COMPLEXITY_LABEL: Record<Complexity, string> = { low: 'Low', medium: 'Medium', high: 'High' }
+/** Business time for the fix when Airgas hasn't given a date: 2 business days after the report. */
+export const FIX_LIMIT = 16 * HOUR
 
-export type ClockTone = 'ok' | 'warn' | 'over' | 'done' | 'needs-complexity'
+export type ClockTone = 'ok' | 'over' | 'done'
 export interface Clock {
-  label: string // "Response due", "Resolve · Medium", "Resolved in", "Resolution"
-  text: string // "3h 20m left", "1h 5m overdue", "Set complexity"
+  label: string // "Airgas reply due", "Fix due", "Closed"
   tone: ClockTone
-  /** Share of the allowed time used, 0–100. */
-  pct: number
   over: boolean
 }
 
+/** The date Airgas gave: the accepted ETA, else a date found in an Airgas message that nobody has ignored. */
+export function airgasDate(t: Ticket): DateKey | null {
+  if (t.eta) return t.eta
+  return t.etaSuggestion && isAirgas(t.etaSuggestion.from) ? t.etaSuggestion.date : null
+}
+
+/** When the fix is due: the end of Airgas's date (5 PM), or 2 business days after the report. */
+export function fixDue(t: Ticket): Date {
+  const d = airgasDate(t)
+  if (d) {
+    const [y, m, day] = d.split('-').map(Number)
+    return fromWall(y, m, day, 17)
+  }
+  return addBiz(new Date(t.createdAt), FIX_LIMIT)
+}
+
+/** The one date that matters now: Airgas's reply while Not started, the fix once In progress. */
+export function deadline(t: Ticket): Date | null {
+  if (t.status === 'open') return addBiz(new Date(t.createdAt), RESPONSE_LIMIT)
+  if (t.status === 'progress') return fixDue(t)
+  return null
+}
+
 export function clock(t: Ticket, now: Date): Clock {
-  if (t.status === 'done') {
-    const took = bizMs(new Date(t.createdAt), new Date(t.resolvedAt ?? now))
-    return { label: 'Resolved in', text: `${dur(took)} biz`, tone: 'done', pct: 100, over: false }
-  }
-  let limit: number, start: string, label: string
-  if (t.status === 'open') {
-    limit = RESPONSE_LIMIT; start = t.createdAt; label = 'Response due'
-  } else if (!t.complexity || !t.startedAt) {
-    return { label: 'Resolution', text: 'Set complexity', tone: 'needs-complexity', pct: 0, over: false }
-  } else {
-    limit = RESOLVE_LIMIT[t.complexity]; start = t.startedAt; label = `Resolve · ${COMPLEXITY_LABEL[t.complexity]}`
-  }
-  const used = bizMs(new Date(start), now)
-  const left = limit - used
-  const over = left < 0
-  const tone: ClockTone = over ? 'over' : left < limit * 0.25 ? 'warn' : 'ok'
-  return { label, text: `${dur(left)} ${over ? 'overdue' : 'left'}`, tone, pct: Math.min(100, Math.round((used / limit) * 100)), over }
+  if (t.status === 'done') return { label: 'Closed', tone: 'done', over: false }
+  const d = deadline(t)!
+  const over = +now > +d
+  return { label: t.status === 'open' ? 'Airgas reply due' : 'Fix due', tone: over ? 'over' : 'ok', over }
 }
 
 export const isOverdue = (t: Ticket, now: Date) => clock(t, now).over
 
-/** When the current clock runs out (null when there is no running clock). */
-export function deadline(t: Ticket): Date | null {
-  if (t.status === 'open') return addBiz(new Date(t.createdAt), RESPONSE_LIMIT)
-  if (t.status === 'progress' && t.complexity && t.startedAt) return addBiz(new Date(t.startedAt), RESOLVE_LIMIT[t.complexity])
-  return null
+/** The automatic "Is it fixed?" email to the reporter (an auto entry addressed to the reporter only). */
+export const isCheckIn = (e: ThreadEntry) => e.kind === 'auto' && e.audience === 'reporter'
+
+/**
+ * Time to ask the reporter "Is it fixed?": the fix due date has passed (we wait until business hours after
+ * it, so the email arrives in the morning), and we haven't asked since that date was set.
+ * A NO clears the date, so the next ask waits for Airgas to give a new one.
+ */
+export function checkInDue(t: Ticket, now: Date): boolean {
+  if (t.status === 'done' || t.confirm === 'yes') return false
+  const due = fixDue(t)
+  if (bizMs(due, now) <= 0) return false
+  const asked = t.thread.filter(isCheckIn).at(-1)
+  return !asked || new Date(asked.at) < due
+}
+
+export function checkInText(t: Ticket): string {
+  return `Hi ${t.reporter.name.split(' ')[0] || t.reporter.name},\n\n` +
+    `You reported a problem on ${fmtDay(new Date(t.createdAt))}: ${CATEGORY_LABEL[t.category].toLowerCase()} at ${locationLabel(t)} (order ${t.order}).\n\n` +
+    'Is it fixed now? Please reply YES or NO to this email. If it is not fixed, add a sentence about what is still wrong.'
 }
 
 // ---- Routing and new tickets ----
@@ -218,10 +239,3 @@ export function suggestEta(t: Ticket, from: PersonId, text: string, now: Date): 
   return t.etaSuggestion
 }
 
-// ---- Deliveries ----
-
-/** Open tickets promised for `day` whose order is missing from that day's schedule. */
-export function missingFromSchedule(tickets: Ticket[], scheduleOrders: string[], day: Date | DateKey): Ticket[] {
-  const orders = new Set(scheduleOrders)
-  return tickets.filter(t => t.status !== 'done' && t.eta && sameDay(t.eta, day) && !orders.has(t.order))
-}

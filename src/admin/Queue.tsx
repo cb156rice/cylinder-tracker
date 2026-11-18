@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CATEGORY_LABEL, clock, locationLabel } from '../lib/rules'
-import type { RiceStaff, ScheduleEntry, Ticket } from '../lib/types'
+import type { RiceStaff, Ticket } from '../lib/types'
 import { adminHref, go } from '../router'
 import { dueInfo, threadSummary } from './display'
 import { StatusPill } from './StatusPill'
@@ -13,7 +13,7 @@ type Filter = 'todo' | 'overdue' | 'done' | 'all'
 
 const FILTERS: [Filter, string][] = [['todo', 'To do'], ['overdue', 'Late'], ['done', 'Completed'], ['all', 'All']]
 
-export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tickets: Ticket[]; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; selectedId: string | null; ask: string | null }) {
+export function Queue({ tickets, now, viewer, selectedId }: { tickets: Ticket[]; now: Date; viewer: RiceStaff; selectedId: string | null }) {
   const [mine, setMine] = useState(false)
   const [filter, setFilter] = useState<Filter>('todo')
 
@@ -67,7 +67,7 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
           </div>
         </div>
 
-        {selected && <TicketPanel key={selected.id + (ask ?? '')} ticket={selected} schedule={schedule} now={now} viewer={viewer} ask={ask} onClose={() => select(null)} />}
+        {selected && <TicketPanel key={selected.id} ticket={selected} now={now} viewer={viewer} onClose={() => select(null)} />}
       </div>
     </main>
   )

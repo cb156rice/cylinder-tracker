@@ -2,11 +2,12 @@
 //   [NEW REPORT] email (EmailJS, from the public form) → new ticket
 //   Reply with [RG-####] in the subject                → email on that ticket's thread (ETA detection included)
 // Every entry carries a `ref` (submission id or Message-ID), so running twice never adds anything twice.
-import { receiveEmail } from '../src/lib/transitions'
+import { config } from '../src/config'
+import { confirmDelivery, receiveEmail } from '../src/lib/transitions'
 import type { ThreadEntry, Ticket } from '../src/lib/types'
 import type { GitHubStore } from '../src/store/githubStore'
 import type { Mail } from './gmail'
-import { identify, reportFromEmail, stripQuoted, ticketNumberInSubject, type Directory } from './parse'
+import { fixAnswer, identify, isCheckInReply, reportFromEmail, stripQuoted, ticketNumberInSubject, type Directory } from './parse'
 
 export interface MailBox {
   search(q: string): Promise<string[]>
@@ -19,16 +20,18 @@ export const PROCESSED = 'tracker/processed'
 export const SKIPPED = 'tracker/skipped'
 const QUERY = `in:inbox -label:${PROCESSED} -label:${SKIPPED} newer_than:30d`
 
-export interface PollResult { created: string[]; replies: string[]; skipped: string[]; duplicates: number }
+export interface PollResult { created: string[]; replies: string[]; answers: string[]; skipped: string[]; duplicates: number }
 
-const withRef = (t: Ticket, ref: string): Ticket => {
-  const thread = [...t.thread]
-  thread[thread.length - 1] = { ...thread[thread.length - 1], ref } as ThreadEntry
-  return { ...t, thread }
+/** Tags the first entry this email added (the email or the answer itself, not the notes after it) with its Message-ID. */
+const withRef = (before: Ticket, after: Ticket, ref: string): Ticket => {
+  const thread = [...after.thread]
+  const i = before.thread.length
+  if (i < thread.length) thread[i] = { ...thread[i], ref } as ThreadEntry
+  return { ...after, thread }
 }
 
 export async function pollInbox(mail: MailBox, store: GitHubStore, dir: Directory, log: (s: string) => void = console.log): Promise<PollResult> {
-  const result: PollResult = { created: [], replies: [], skipped: [], duplicates: 0 }
+  const result: PollResult = { created: [], replies: [], answers: [], skipped: [], duplicates: 0 }
   const ids = await mail.search(QUERY)
   log(`${ids.length} new email(s) in the tracker inbox`)
   if (!ids.length) return result
@@ -53,6 +56,19 @@ export async function pollInbox(mail: MailBox, store: GitHubStore, dir: Director
           result.created.push(t.id)
           log(`  + ${t.id} created from ${what}`)
         }
+      } else if (n !== null && byId.has(`RG-${n}`) && isCheckInReply(m.subject)) {
+        // The reporter answering "Is it fixed?"
+        const id = `RG-${n}`
+        if (seen.has(m.messageId)) { result.duplicates++ } else {
+          const text = stripQuoted(m.text) || '(empty message)'
+          const fixed = fixAnswer(text)
+          const t = await store.update(id, (t, _now) => fixed === null
+            ? { ...t, thread: [...t.thread, { kind: 'note', at: m.date.toISOString(), text: `${t.reporter.name.split(' ')[0]} replied to "Is it fixed?" without a clear YES or NO: ${text}`, ref: m.messageId }] }
+            : withRef(t, confirmDelivery(t, fixed, m.date, config.autoCloseOnConfirm), m.messageId))
+          byId.set(id, t); seen.add(m.messageId)
+          result.answers.push(`${id} ${fixed === null ? 'unclear' : fixed ? 'YES' : 'NO'}`)
+          log(`  ✓ ${id}: reporter answered ${fixed === null ? '(unclear)' : fixed ? 'YES' : 'NO'}`)
+        }
       } else if (n !== null && byId.has(`RG-${n}`)) {
         const id = `RG-${n}`
         if (seen.has(m.messageId)) { result.duplicates++ } else {
@@ -62,7 +78,7 @@ export async function pollInbox(mail: MailBox, store: GitHubStore, dir: Director
             if (who.kind === 'unknown') {
               return { ...t, thread: [...t.thread, { kind: 'note', at: m.date.toISOString(), text: `Email from ${who.name || who.address}: ${text}`, ref: m.messageId }] }
             }
-            return withRef(receiveEmail(t, who.who, text, m.date), m.messageId)
+            return withRef(t, receiveEmail(t, who.who, text, m.date), m.messageId)
           })
           byId.set(id, t); seen.add(m.messageId)
           result.replies.push(id)

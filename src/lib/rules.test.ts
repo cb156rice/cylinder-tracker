@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   clock, coordinatorFor, createTicket, deadline, locationLabel,
-  missingFromSchedule, nextTicketId, openingSubject, recipients, threadState, validateReport,
+  checkInDue, fixDue, nextTicketId, openingSubject, recipients, threadState, validateReport,
 } from './rules'
+import { askFixed } from './transitions'
 import { fromWall } from './time'
 import type { ReportInput, Ticket } from './types'
 
@@ -48,29 +49,45 @@ describe('routing and new tickets', () => {
   })
 })
 
-describe('clock', () => {
-  it('gives a new ticket 12 business hours to respond', () => {
+describe('due dates', () => {
+  it('gives Airgas 12 business hours to reply to a new ticket', () => {
     const t = ticket({}, ct(10, 5, 10, 5))
-    expect(clock(t, NOW)).toMatchObject({ label: 'Response due', text: '7h 35m left', tone: 'ok', over: false })
     expect(deadline(t)).toEqual(ct(10, 6, 14, 5))
+    expect(clock(t, NOW)).toMatchObject({ label: 'Airgas reply due', over: false })
+    expect(clock(ticket({}, ct(10, 1, 11)), NOW)).toMatchObject({ over: true })
   })
-  it('warns in the last quarter and flags overdue', () => {
-    const t = ticket({}, ct(10, 1, 11))
-    expect(clock(t, ct(10, 2, 13))).toMatchObject({ tone: 'warn', text: '2h 0m left' })
-    expect(clock(t, NOW)).toMatchObject({ tone: 'over', over: true, text: '7h 30m overdue', pct: 100 })
+  it('without a date from Airgas, the fix is due 2 business days after the report', () => {
+    const t = ticket({ status: 'progress', startedAt: NOW.toISOString() }, ct(10, 5, 10, 5))
+    expect(deadline(t)).toEqual(ct(10, 7, 10, 5))
+    expect(clock(t, NOW)).toMatchObject({ label: 'Fix due', over: false })
   })
-  it('asks for a complexity once in progress', () => {
-    const t = ticket({ status: 'progress', startedAt: NOW.toISOString(), complexity: null })
-    expect(clock(t, NOW)).toMatchObject({ tone: 'needs-complexity', text: 'Set complexity' })
-    expect(deadline(t)).toBeNull()
+  it("uses the date Airgas gave (5 PM that day), not dates from Rice's own messages", () => {
+    const t = ticket({ status: 'progress' }, ct(10, 5, 10, 5))
+    expect(fixDue({ ...t, etaSuggestion: { date: '2026-10-08', quote: 'Thursday', from: 'gordan' } })).toEqual(ct(10, 8, 17))
+    expect(fixDue({ ...t, eta: '2026-10-09' })).toEqual(ct(10, 9, 17))
+    expect(fixDue({ ...t, etaSuggestion: { date: '2026-10-08', quote: 'Thursday?', from: 'israel' } })).toEqual(ct(10, 7, 10, 5))
   })
-  it('uses the complexity limit once set', () => {
-    const t = ticket({ status: 'progress', startedAt: ct(10, 5, 9, 40).toISOString(), complexity: 'medium' })
-    expect(clock(t, NOW)).toMatchObject({ label: 'Resolve · Medium', text: '11h 10m left', tone: 'ok' })
+  it('has no clock once closed', () => {
+    expect(clock(ticket({ status: 'done' }), NOW)).toMatchObject({ label: 'Closed', over: false })
   })
-  it('reports resolution time when done', () => {
-    const t = ticket({ status: 'done', resolvedAt: ct(10, 6, 10, 5).toISOString() }, ct(10, 5, 10, 5))
-    expect(clock(t, NOW)).toMatchObject({ label: 'Resolved in', text: '8h 0m biz', tone: 'done' })
+})
+
+describe('"Is it fixed?" check-in', () => {
+  const t = ticket({ status: 'progress' }, ct(10, 1, 11)) // fix due Mon Oct 5, 11 AM
+  it('asks once the fix due date has passed, during business hours', () => {
+    expect(checkInDue(t, ct(10, 5, 10))).toBe(false)
+    expect(checkInDue(t, NOW)).toBe(true)
+    expect(checkInDue(ticket({ status: 'progress', eta: '2026-10-08' }, ct(10, 1, 11)), ct(10, 8, 20))).toBe(false) // evening: wait for morning
+    expect(checkInDue(ticket({ status: 'progress', eta: '2026-10-08' }, ct(10, 1, 11)), ct(10, 9, 9, 30))).toBe(true)
+  })
+  it("asks again only after Airgas gives a new date, and never on closed tickets", () => {
+    const asked = askFixed(t, NOW)
+    expect(asked.confirm).toBe('asked')
+    expect(asked.thread.at(-1)).toMatchObject({ kind: 'auto', audience: 'reporter' })
+    expect(asked.thread.at(-1)?.text).toContain('Please reply YES or NO')
+    expect(checkInDue(asked, ct(10, 6, 12))).toBe(false)
+    expect(checkInDue({ ...asked, eta: '2026-10-08' }, ct(10, 9, 10))).toBe(true)
+    expect(checkInDue({ ...t, status: 'done' }, NOW)).toBe(false)
   })
 })
 
@@ -92,9 +109,4 @@ describe('thread', () => {
 })
 
 describe('deliveries', () => {
-  it('warns about promised deliveries missing from the schedule', () => {
-    const due = ticket({ eta: '2026-10-05' })
-    expect(missingFromSchedule([due], ['AG-1'], NOW)).toEqual([due])
-    expect(missingFromSchedule([due], [due.order], NOW)).toEqual([])
-  })
 })

@@ -8,6 +8,7 @@ import { GitHubApi } from '../src/store/githubApi'
 import { GitHubStore } from '../src/store/githubStore'
 import { Gmail } from './gmail'
 import { parseDirectory } from './parse'
+import { askReporters } from './checkins'
 import { sendOutbox } from './mailer'
 import { pollInbox } from './poller'
 
@@ -25,12 +26,15 @@ async function main() {
   if (!dir.airgas.length || !dir.staff.length) console.warn('Warning: AIRGAS_ADDRESSES or STAFF_ADDRESSES is empty; replies from them will be treated as unknown senders.')
 
   const r = await pollInbox(gmail, store, dir)
+  console.log('Checking which reporters to ask "Is it fixed?"')
+  const asked = await askReporters(store, new Date())
   console.log('Sending queued emails')
   const m = await sendOutbox(gmail, store, dir, new Date())
   const summary = [
     '### Mail poller',
     `- New tickets: ${r.created.join(', ') || 'none'}`,
     `- Replies added: ${r.replies.join(', ') || 'none'}`,
+    `- Fix check-ins: asked ${asked.join(', ') || 'none'}; answers ${r.answers.join(', ') || 'none'}`,
     `- Skipped (not tracker mail): ${r.skipped.length}`,
     `- Already processed: ${r.duplicates}`,
     `- Emails sent: ${m.sent.join(', ') || 'none'}`,

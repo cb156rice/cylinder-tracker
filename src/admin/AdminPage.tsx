@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { deliveryView } from '../lib/deliveries'
 import { RICE_STAFF } from '../lib/rules'
 import type { RiceStaff } from '../lib/types'
 import { adminHref, type AdminTab } from '../router'
 import { useNow, useTickets } from '../store/hooks'
-import { Deliveries } from './Deliveries'
 import { HowItWorks } from './HowItWorks'
 import { Queue } from './Queue'
 import './admin.css'
@@ -19,8 +17,8 @@ function savedViewer(): RiceStaff {
   } catch { return 'javier' }
 }
 
-export function AdminPage({ tab, ticketId, ask }: { tab: AdminTab; ticketId: string | null; ask: string | null }) {
-  const { tickets, schedule, loading } = useTickets()
+export function AdminPage({ tab, ticketId }: { tab: AdminTab; ticketId: string | null }) {
+  const { tickets, loading } = useTickets()
   const now = useNow()
   // Prototype-only identity switch. Phase 2 uses whoever's GitHub token is signed in.
   const [viewer, setViewerState] = useState<RiceStaff>(savedViewer)
@@ -29,8 +27,7 @@ export function AdminPage({ tab, ticketId, ask }: { tab: AdminTab; ticketId: str
     try { localStorage.setItem(VIEWER_KEY, v) } catch { /* ignore */ }
   }
 
-  const deliveries = deliveryView(tickets, schedule, now)
-  const tabs: [AdminTab, string][] = [['queue', 'Queue'], ['deliveries', "Today's deliveries"], ['how', 'How it works']]
+  const tabs: [AdminTab, string][] = [['queue', 'Queue'], ['how', 'How it works']]
 
   return (
     <>
@@ -51,7 +48,7 @@ export function AdminPage({ tab, ticketId, ask }: { tab: AdminTab; ticketId: str
           <nav className="admin-tabs" aria-label="Admin sections">
             {tabs.map(([k, label]) => (
               <a key={k} href={adminHref(k)} aria-current={tab === k ? 'page' : undefined}>
-                {label}{k === 'deliveries' && deliveries.pending > 0 && <span className="badge">{deliveries.pending}</span>}
+                {label}
               </a>
             ))}
           </nav>
@@ -59,8 +56,7 @@ export function AdminPage({ tab, ticketId, ask }: { tab: AdminTab; ticketId: str
       </header>
 
       {loading ? null
-        : tab === 'queue' ? <Queue tickets={tickets} schedule={schedule} now={now} viewer={viewer} selectedId={ticketId} ask={ask} />
-        : tab === 'deliveries' ? <Deliveries view={deliveries} now={now} />
+        : tab === 'queue' ? <Queue tickets={tickets} now={now} viewer={viewer} selectedId={ticketId} />
         : <HowItWorks />}
     </>
   )

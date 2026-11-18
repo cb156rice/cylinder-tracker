@@ -5,7 +5,7 @@ import { GitHubStore } from '../src/store/githubStore'
 import { encodePayload, makePayload } from '../src/report/payload'
 import type { Mail } from './gmail'
 import { pollInbox, PROCESSED, SKIPPED, type MailBox } from './poller'
-import { identify, parseAddress, stripQuoted } from './parse'
+import { fixAnswer, identify, parseAddress, stripQuoted } from './parse'
 
 const NOW = fromWall(2026, 11, 13, 10, 0)
 const DIR = { airgas: ['airgas@example.com'], staff: ['staff@example.com'] }
@@ -56,8 +56,10 @@ describe('pollInbox', () => {
 
     await store.refresh()
     const after = (await store.list())[0]
-    const [, airgas, staff, unknown] = after.thread
-    expect(airgas).toMatchObject({ kind: 'email', from: 'chris', text: "We'll swap it on tomorrow's truck.\n\nThanks,\nChris" })
+    const [, airgas, moved, staff, unknown] = after.thread
+    expect(airgas).toMatchObject({ kind: 'email', from: 'chris', text: "We'll swap it on tomorrow's truck.\n\nThanks,\nChris", ref: '<m2@x>' })
+    expect(moved).toMatchObject({ kind: 'note', text: 'Chris replied · moved to In progress' })
+    expect(after.status).toBe('progress')
     expect(staff).toMatchObject({ kind: 'email', from: 'israel', text: 'Thanks, lab is aware.' })
     expect(unknown).toMatchObject({ kind: 'note', text: 'Email from Lab person: Still smells.' })
     expect(after.etaSuggestion?.date).toBe('2026-11-16') // Friday's "tomorrow" → Monday
@@ -69,7 +71,38 @@ describe('pollInbox', () => {
   })
 })
 
+describe('"Is it fixed?" replies', () => {
+  it('closes on YES, and on NO reopens and queues a note to Airgas', async () => {
+    const store = new GitHubStore(fakeGitHub().api(), () => NOW)
+    const mails: Mail[] = [reportMail('a', new Date(NOW.getTime() - 7200_000)), reportMail('b', new Date(NOW.getTime() - 3600_000))]
+    const { box } = fakeMail(mails)
+    await pollInbox(box, store, DIR, () => {})
+    const ask = (id: string, n: number, text: string): Mail =>
+      ({ id, threadId: id, date: NOW, from: 'Wei <staff@example.com>', subject: `Re: [RG-${n}] Is it fixed? Reply YES or NO`, messageId: `<${id}@x>`, text })
+    mails.push(
+      ask('y', 1001, 'Yes, all good now.\n\nOn Fri, Nov 13 Tracker wrote:\n> Is it fixed?'),
+      ask('n', 1002, 'no - still hissing'),
+    )
+    const r = await pollInbox(box, store, DIR, () => {})
+    expect(r.answers).toEqual(['RG-1001 YES', 'RG-1002 NO'])
+    const [b, a] = await store.list()
+    expect(a).toMatchObject({ id: 'RG-1001', status: 'done', confirm: 'yes' })
+    expect(b).toMatchObject({ id: 'RG-1002', status: 'progress', confirm: 'no' })
+    const toAirgas = b.thread.find(e => e.kind === 'auto' && e.text.includes('still not fixed'))
+    expect(toAirgas?.ref).toBeUndefined() // so the mailer sends it
+    expect(b.thread.find(e => e.kind === 'confirm')?.ref).toBe('<n@x>')
+  })
+})
+
 describe('email parsing', () => {
+  it('reads YES / NO answers', () => {
+    expect(fixAnswer('Yes!')).toBe(true)
+    expect(fixAnswer('  fixed, thanks')).toBe(true)
+    expect(fixAnswer('No, still empty')).toBe(false)
+    expect(fixAnswer('Not yet')).toBe(false)
+    expect(fixAnswer('I think so?')).toBeNull()
+  })
+
   it('strips Gmail, Outlook and quote-line replies', () => {
     expect(stripQuoted('Yes.\n\nOn Thu, Nov 12, 2026 at 3:01 PM Someone <a@b.c>\nwrote:\n> old')).toBe('Yes.')
     expect(stripQuoted('OK\r\n-----Original Message-----\r\nFrom: x')).toBe('OK')
