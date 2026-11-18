@@ -32,7 +32,7 @@ export function threadSummary(t: Ticket): { top: string; sub: string; color: str
     case 'closed': return { top: 'Closed', sub: '', color: 'var(--muted)' }
     case 'eta-suggested': {
       const s = t.etaSuggestion!
-      return { top: `${PEOPLE[s.from].name} gave a date`, sub: `"${s.quote}"`, color: 'var(--ink)' }
+      return { top: `Expected ${fmtDay(s.date)}`, sub: `${PEOPLE[s.from].name}: "${s.quote}"`, color: 'var(--ink)' }
     }
     case 'eta': return { top: `Expected ${fmtDay(t.eta!)}`, sub: quote, color: 'var(--ink)' }
     case 'replied': return { top: `${PEOPLE[last!.from].name} replied`, sub: `"${last!.text}"`, color: 'var(--ink)' }
