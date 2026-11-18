@@ -62,6 +62,17 @@ export class Gmail {
     }
   }
 
+  /** Sends a raw RFC 2822 message from the tracker mailbox; returns its Gmail id. */
+  async send(raw: string): Promise<string> {
+    const r = await this.call<{ id: string }>('POST', '/messages/send', { raw: Buffer.from(raw, 'utf8').toString('base64url') })
+    return r.id
+  }
+
+  async messageIdOf(id: string): Promise<string> {
+    const m = await this.call<RawMessage>('GET', `/messages/${id}?format=metadata&metadataHeaders=Message-ID`)
+    return m.payload.headers?.find(x => x.name.toLowerCase() === 'message-id')?.value ?? ''
+  }
+
   /** Finds or creates a label like "tracker/processed"; returns its id. */
   async label(name: string): Promise<string> {
     const { labels } = await this.call<{ labels: { id: string; name: string }[] }>('GET', '/labels')

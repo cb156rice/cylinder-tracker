@@ -151,7 +151,7 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
 
         <div className="stack" style={{ gap: 10 }}>
           <span className="label">Emails with Airgas</span>
-          <Thread ticket={t} />
+          <Thread ticket={t} now={now} />
         </div>
 
         {t.status !== 'done' && <Composer ticket={t} viewer={viewer} initialDraft={ask === 'schedule' ? scheduleAskDraft(t, viewer) : ''} />}

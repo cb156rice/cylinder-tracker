@@ -61,6 +61,8 @@ export interface ConfirmEntry extends EntryBase {
 /** A one-line system note ("Israel moved to In progress"). */
 export interface NoteEntry extends EntryBase {
   kind: 'note'
+  /** On "Emailed …" notes from the mailer: the Message-ID of the email it sent, for threading later replies. */
+  messageId?: string
 }
 export type ThreadEntry = EmailEntry | AutoEntry | LogEntry | ConfirmEntry | NoteEntry
 

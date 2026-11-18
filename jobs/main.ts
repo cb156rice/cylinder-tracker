@@ -8,6 +8,7 @@ import { GitHubApi } from '../src/store/githubApi'
 import { GitHubStore } from '../src/store/githubStore'
 import { Gmail } from './gmail'
 import { parseDirectory } from './parse'
+import { sendOutbox } from './mailer'
 import { pollInbox } from './poller'
 
 function need(name: string): string {
@@ -24,12 +25,16 @@ async function main() {
   if (!dir.airgas.length || !dir.staff.length) console.warn('Warning: AIRGAS_ADDRESSES or STAFF_ADDRESSES is empty; replies from them will be treated as unknown senders.')
 
   const r = await pollInbox(gmail, store, dir)
+  console.log('Sending queued emails')
+  const m = await sendOutbox(gmail, store, dir, new Date())
   const summary = [
     '### Mail poller',
     `- New tickets: ${r.created.join(', ') || 'none'}`,
     `- Replies added: ${r.replies.join(', ') || 'none'}`,
     `- Skipped (not tracker mail): ${r.skipped.length}`,
     `- Already processed: ${r.duplicates}`,
+    `- Emails sent: ${m.sent.join(', ') || 'none'}`,
+    ...(m.failed.length ? [`- **Could not send:** ${m.failed.join(', ')} (will retry next run)`] : []),
   ].join('\n')
   console.log(summary)
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n')
