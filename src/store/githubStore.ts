@@ -2,7 +2,10 @@
 // Everyone with a token sees the same data; the dashboard refreshes every 45 s.
 import { createTicket, validateReport } from '../lib/rules'
 import type { ReportInput, ScheduleEntry, ThreadEntry, Ticket } from '../lib/types'
-import { GitHubApi, issueOfComment, type Comment, type Issue } from './githubApi'
+import { GitHubApi, GitHubError, issueOfComment, type Comment, type Issue } from './githubApi'
+
+/** The mail job's workflow file in the data repo (.github/workflows/mail.yml). */
+export const MAIL_WORKFLOW = 'mail.yml'
 import {
   issueLabels, issueNumber, issueTitle, parseBody, parseComment, renderBody, renderComment, ticketId, type TicketFields,
 } from './githubFormat'
@@ -129,6 +132,35 @@ export class GitHubStore implements TicketStore {
       onProgress?.(++done)
       this.emit()
     }
+  }
+
+  /**
+   * "Check mail now": starts the mail job in the data repo (read inbox, follow-ups, send queued emails),
+   * waits for it to finish (usually about a minute) and refreshes. Resolves with the run's conclusion.
+   */
+  async checkMail(onRunning?: () => void, pollMs = 5000): Promise<string> {
+    const started = Date.now()
+    try {
+      await this.api.runWorkflow(MAIL_WORKFLOW)
+    } catch (e) {
+      if (e instanceof GitHubError && (e.status === 403 || e.status === 404)) {
+        throw new Error('"Check mail now" needs one more permission on your GitHub token: Actions → Read and write. Edit the token on github.com, then try again.')
+      }
+      throw e
+    }
+    onRunning?.()
+    const deadline = started + 5 * 60_000
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, pollMs))
+      // GitHub doesn't return the new run's id, so take the newest run started after the click.
+      const run = (await this.api.workflowRuns(MAIL_WORKFLOW)).find(r => Date.parse(r.created_at) >= started - 10_000)
+      if (run?.status === 'completed') {
+        await this.refresh().catch(() => {})
+        return run.conclusion ?? 'unknown'
+      }
+    }
+    await this.refresh().catch(() => {})
+    return 'timed out'
   }
 
   subscribe(listener: () => void) {

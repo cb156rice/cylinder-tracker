@@ -1,5 +1,5 @@
 // The handful of GitHub REST calls the dashboard needs. Runs in the browser with the admin's
-// fine-grained token (Issues: read/write on the private data repo).
+// fine-grained token (Issues: read/write on the private data repo; Actions: read/write for "Check mail now").
 
 export interface Issue {
   number: number
@@ -13,6 +13,14 @@ export interface Comment {
   body: string
   created_at: string
   issue_url: string
+}
+
+export interface WorkflowRun {
+  id: number
+  status: string // queued, in_progress, completed…
+  conclusion: string | null // success, failure…
+  created_at: string
+  html_url: string
 }
 
 export class GitHubError extends Error {
@@ -87,6 +95,15 @@ export class GitHubApi {
   }
   listIssueComments(n: number) { return this.all<Comment>(`${this.base}/issues/${n}/comments`) }
   createComment(n: number, body: string) { return this.call<Comment>('POST', `${this.base}/issues/${n}/comments`, { body }) }
+
+  /** Starts a workflow in the data repo (needs Actions: write). */
+  runWorkflow(file: string) {
+    return this.call<void>('POST', `${this.base}/actions/workflows/${file}/dispatches`, { ref: 'main' })
+  }
+  /** Most recent runs of a workflow, newest first (needs Actions: read). */
+  async workflowRuns(file: string): Promise<WorkflowRun[]> {
+    return (await this.call<{ workflow_runs: WorkflowRun[] }>('GET', `${this.base}/actions/workflows/${file}/runs?per_page=5`)).workflow_runs
+  }
 }
 
 export const issueOfComment = (c: Comment) => Number(c.issue_url.split('/').pop())
@@ -94,7 +111,7 @@ export const issueOfComment = (c: Comment) => Number(c.issue_url.split('/').pop(
 function explain(status: number, msg: string): string {
   if (status === 401) return 'GitHub rejected the token (expired or mistyped). Connect again with a new token.'
   if (status === 403 && /rate limit/i.test(msg)) return 'GitHub rate limit reached. Wait a few minutes and try again.'
-  if (status === 403) return `The token doesn't have permission for this (${msg}). It needs Issues: Read and write on the data repo.`
+  if (status === 403) return `The token doesn't have permission for this (${msg}). It needs Issues: Read and write (and Actions: Read and write for Check mail now) on the data repo.`
   if (status === 404) return "GitHub can't find the data repo with this token. Check the token has access to it."
   return `GitHub error ${status}: ${msg}`
 }

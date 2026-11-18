@@ -106,3 +106,8 @@ textarea.input { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
 .connect { max-width: 520px; padding: 24px; gap: 14px; }
 .connect p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--body-2); }
 .h2 { margin: 0; font-size: 18px; font-weight: 600; }
+
+/* "Check mail now": the one solid button in the bar */
+.demo-bar__reset.demo-bar__primary { background: #fff; color: var(--ink); border-color: #fff; font-weight: 600; }
+.demo-bar__reset.demo-bar__primary:hover { background: #E9EAE6; }
+.demo-bar__reset.demo-bar__primary:disabled { opacity: .75; }

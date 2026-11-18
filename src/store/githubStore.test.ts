@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fromWall } from '../lib/time'
 import { receiveEmail, startProgress } from '../lib/transitions'
-import { GitHubApi } from './githubApi'
+import { GitHubApi, GitHubError } from './githubApi'
 import { fakeGitHub } from './fakeGitHub'
 import { GitHubStore } from './githubStore'
 import { makeSeed } from './seed'
@@ -67,5 +67,20 @@ describe('GitHubStore', () => {
     const store = new GitHubStore(api, () => NOW)
     expect(await store.list()).toEqual([])
     expect(store.status().error).toContain('rejected the token')
+  })
+
+  it('"Check mail now" starts the mail job, waits for it, and explains a missing permission', async () => {
+    const api = fakeGitHub().api()
+    const runs: { id: number; status: string; conclusion: string | null; created_at: string; html_url: string }[] = []
+    let polls = 0
+    api.runWorkflow = async () => { runs.unshift({ id: 1, status: 'queued', conclusion: null, created_at: new Date().toISOString(), html_url: '' }) }
+    api.workflowRuns = async () => { if (++polls === 2) Object.assign(runs[0], { status: 'completed', conclusion: 'success' }); return runs }
+    const store = new GitHubStore(api)
+    let running = false
+    expect(await store.checkMail(() => { running = true }, 1)).toBe('success')
+    expect(running).toBe(true)
+
+    api.runWorkflow = async () => { throw new GitHubError(403, 'Resource not accessible by personal access token') }
+    await expect(store.checkMail(undefined, 1)).rejects.toThrow('Actions → Read and write')
   })
 })
