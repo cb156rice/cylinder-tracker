@@ -10,6 +10,7 @@
 // Thread entries are append-only comments, so the mail poller and a person in the dashboard can
 // add messages at the same time without overwriting each other.
 import { CATEGORY_LABEL, PEOPLE, STATUS_LABEL, authorName, locationLabel, openingSubject } from '../lib/rules'
+import { normalize, type Settings } from '../lib/directory'
 import type { ThreadEntry, Ticket } from '../lib/types'
 
 export const FORMAT_VERSION = 1
@@ -73,4 +74,22 @@ export function parseComment(body: string): ThreadEntry | null {
   } catch {
     return null
   }
+}
+
+// ---- Settings (Users and Settings pages) ----
+// One issue holds them, closed and labelled so it stays out of the way. It has no ticket marker, so the
+// ticket list skips it (its issue number is simply never a ticket ID).
+
+const SETTINGS_MARKER = '<!-- cylinder-tracker:settings v1 -->'
+export const SETTINGS_TITLE = 'Tracker settings (edit on the dashboard, not here)'
+export const isSettingsBody = (body: string | null) => !!body?.startsWith(SETTINGS_MARKER)
+
+export function renderSettingsBody(s: Settings): string {
+  return `${SETTINGS_MARKER}\nPeople and email routing for the cylinder tracker. Edit them on the dashboard's Users and Settings pages.\n\n\`\`\`json\n${JSON.stringify(s, null, 2)}\n\`\`\`\n`
+}
+
+export function parseSettingsBody(body: string): Settings | null {
+  const m = /```json\n([\s\S]*?)\n```/.exec(body)
+  if (!m) return null
+  try { return normalize(JSON.parse(m[1]) as Partial<Settings>) } catch { return null }
 }

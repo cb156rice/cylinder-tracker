@@ -213,3 +213,27 @@ a.table__row[aria-current='true'] { background: var(--tint); box-shadow: inset 3
 .warn-banner svg { margin-top: 2px; }
 .warn-banner span { color: var(--body); }
 .warn-banner strong { color: var(--red-fg); }
+
+/* ---- Users and Settings ---- */
+.settings { max-width: 880px; }
+.settings__intro { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.settings__card { padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+.settings__card .h2 { margin: 0; font-size: 17px; }
+.settings__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.settings__hint { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.settings__rows { display: flex; flex-direction: column; gap: 8px; }
+.settings__row { display: grid; grid-template-columns: 160px minmax(0, 320px); gap: 12px; align-items: center; font-size: 14px; font-weight: 500; }
+.settings__group { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.settings__group legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.settings__save { display: flex; justify-content: flex-end; align-items: center; gap: 10px; position: sticky; bottom: 0; padding: 12px 0; background: var(--page); }
+.people { display: flex; flex-direction: column; border-top: 1px solid var(--border-2); }
+.person { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) 40px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-2); font-size: 13.5px; }
+.person .link-btn { justify-self: end; align-self: center; }
+.people__empty { padding: 14px 0; font-size: 13.5px; color: var(--faint); }
+.person-form { display: flex; flex-direction: column; gap: 12px; padding: 14px; margin: 8px 0; border: 1px solid var(--border); border-radius: 8px; background: #FAFAF8; }
+.person-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) {
+  .person { grid-template-columns: 1fr auto; }
+  .person > span:nth-child(2), .person > span:nth-child(3) { grid-column: 1; }
+  .person-form__grid, .settings__row { grid-template-columns: 1fr; }
+}

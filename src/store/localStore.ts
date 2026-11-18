@@ -2,10 +2,12 @@
 // seeded from the prototype's data; "Reset demo" puts it back.
 import { createTicket, nextTicketId, validateReport } from '../lib/rules'
 import type { ReportInput, ScheduleEntry, Ticket } from '../lib/types'
+import { DEFAULT_SETTINGS, normalize, setSettings, type Settings } from '../lib/directory'
 import { makeSeed } from './seed'
 import type { Change, TicketStore } from './store'
 
 const KEY = 'cylinder-tracker:demo:v1'
+const SETTINGS_KEY = 'cylinder-tracker:demo:settings:v1'
 
 interface Saved {
   version: 1
@@ -64,8 +66,26 @@ export class LocalStore implements TicketStore {
     return n
   }
 
-  /** Throws away all changes and reseeds relative to the current time. */
-  reset() { this.commit(this.fresh()) }
+  async loadSettings(): Promise<Settings> {
+    try {
+      const raw = this.storage?.getItem(SETTINGS_KEY)
+      return normalize(raw ? (JSON.parse(raw) as Partial<Settings>) : DEFAULT_SETTINGS)
+    } catch {
+      return normalize(DEFAULT_SETTINGS)
+    }
+  }
+
+  async saveSettings(s: Settings): Promise<void> {
+    try { this.storage?.setItem(SETTINGS_KEY, JSON.stringify(s)) } catch { /* keep in memory only */ }
+    this.listeners.forEach(l => l())
+  }
+
+  /** Throws away all changes (tickets and settings) and reseeds relative to the current time. */
+  reset() {
+    try { this.storage?.removeItem(SETTINGS_KEY) } catch { /* ignore */ }
+    setSettings(normalize(DEFAULT_SETTINGS))
+    this.commit(this.fresh())
+  }
 
   private fresh(): Saved {
     return { version: 1, ...makeSeed(this.now()), simCount: {} }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, airgasDate, deadline, isCheckIn, isOverdue, locationLabel, noReplyWarning,
+  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, airgasDate, deadline, isCheckIn, isOverdue, locationLabel, noReplyWarning,
 } from '../lib/rules'
 import { fmt, fmtDay, fmtShort } from '../lib/time'
 import {
@@ -9,6 +9,7 @@ import {
 import type { ResolvedBy, RiceStaff, Ticket } from '../lib/types'
 import { useStore } from '../store/hooks'
 import type { Change } from '../store/store'
+import { riceStaff } from '../lib/directory'
 import { Composer } from './Composer'
 import { StatusPill } from './StatusPill'
 import { Thread } from './Thread'
@@ -44,7 +45,7 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
             <label className="plain-select">
               <span className="sr-only">Coordinator</span>
               <select value={t.coordinator} onChange={e => apply((x, n) => setCoordinator(x, e.target.value as RiceStaff, n))}>
-                {RICE_STAFF.map(p => <option key={p} value={p}>Handled by {PEOPLE[p].name}</option>)}
+                {[...new Set([...riceStaff(), t.coordinator])].map(p => <option key={p} value={p}>Handled by {PEOPLE[p].name}</option>)}
               </select>
             </label>
           </div>
@@ -64,7 +65,7 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
           <div className="warn-banner" role="alert">
             <WarnIcon size={16} />
             <span>
-              <strong>Airgas hasn't replied, even to the follow-up on {fmt(warned)}.</strong> Consider escalating to Chris (under More options below).
+              <strong>Airgas hasn't replied, even to the follow-up on {fmt(warned)}.</strong> Consider escalating (under More options below).
             </span>
           </div>
         )}
@@ -85,7 +86,7 @@ export function TicketPanel({ ticket: t, now, viewer, onClose }: { ticket: Ticke
             <label className="field">Who fixed it?
               <select className="input input--sm" value={doneBy} onChange={e => setDoneBy(e.target.value as ResolvedBy)}>
                 <option value="airgas">Airgas</option>
-                {RICE_STAFF.map(p => <option key={p} value={p}>{RESOLVER_LABEL[p]}</option>)}
+                {riceStaff().map(p => <option key={p} value={p}>{RESOLVER_LABEL[p]}</option>)}
               </select>
             </label>
             <label className="field">What was done? (optional)

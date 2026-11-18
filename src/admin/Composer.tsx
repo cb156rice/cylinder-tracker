@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { AIRGAS_CONTACTS, PEOPLE, recipients } from '../lib/rules'
+import { airgasContacts, getSettings } from '../lib/directory'
+import { PEOPLE, recipients } from '../lib/rules'
 import { templateDraft } from '../lib/draft'
 import { logContact, receiveEmail, sendEmail } from '../lib/transitions'
 import type { AirgasContact, RiceStaff, Ticket } from '../lib/types'
@@ -15,13 +16,14 @@ export function Composer({ ticket: t, viewer, initialDraft = '' }: { ticket: Tic
   const [more, setMore] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [logKind, setLogKind] = useState<'call' | 'visit'>('call')
-  const [logWho, setLogWho] = useState<AirgasContact>('ruben')
+  const [logWho, setLogWho] = useState<AirgasContact>(() => t.participants.find(p => PEOPLE[p].airgas) ?? airgasContacts()[0] ?? '')
   const [logNote, setLogNote] = useState('')
 
   const r = recipients(t, escalating)
   const names = (ps: string[]) => ps.join(', ')
   const recipientLine = `Goes to ${names(r.to.map(p => PEOPLE[p].name))}, copying ${names([...r.cc.map(p => PEOPLE[p].name), t.reporter.name.split(' ')[0]])}`
-  const canEscalate = !t.participants.includes('chris') && !escalating
+  const esc = getSettings().escalationContact
+  const canEscalate = !!esc && !t.participants.includes(esc) && !escalating
 
   function send() {
     if (!draft.trim()) return
@@ -54,7 +56,7 @@ export function Composer({ ticket: t, viewer, initialDraft = '' }: { ticket: Tic
           ))}
           <select className="mini-select" style={{ marginLeft: 'auto', height: 32 }} value={logWho} aria-label="With whom"
             onChange={e => setLogWho(e.target.value as AirgasContact)}>
-            {AIRGAS_CONTACTS.map(p => <option key={p} value={p}>with {PEOPLE[p].name}</option>)}
+            {airgasContacts().map(p => <option key={p} value={p}>with {PEOPLE[p].name}</option>)}
           </select>
         </div>
         <textarea className="input" rows={3} value={logNote} onChange={e => setLogNote(e.target.value)} placeholder="What was said or agreed?" aria-label="Call or visit notes" />
@@ -70,7 +72,7 @@ export function Composer({ ticket: t, viewer, initialDraft = '' }: { ticket: Tic
     <div className="composer">
       {escalating && (
         <div className="composer__esc">
-          <span>Chris (Airgas regional manager) will be added to this email.</span>
+          <span>{PEOPLE[esc].name} ({PEOPLE[esc].role.replace('Airgas · ', 'Airgas ')}) will be added to this email.</span>
           <button className="link-btn" onClick={() => { setEscalating(false); setDraft('') }}>Undo</button>
         </div>
       )}
@@ -83,7 +85,7 @@ export function Composer({ ticket: t, viewer, initialDraft = '' }: { ticket: Tic
           Write it for me
         </button>
         <button className="btn btn--sm btn--primary" disabled={!draft.trim()} onClick={send}>
-          {escalating ? 'Send and add Chris' : 'Send'}
+          {escalating ? `Send and add ${PEOPLE[esc].name}` : 'Send'}
         </button>
       </div>
 
@@ -95,7 +97,7 @@ export function Composer({ ticket: t, viewer, initialDraft = '' }: { ticket: Tic
           <div className="more__list">
             {canEscalate && (
               <button className="more__item" onClick={() => { setEscalating(true); setDraft(templateDraft(t, viewer, true, '')); setMore(false) }}>
-                <span className="strong">Escalate to Chris</span><span className="muted">Airgas isn't responding. Add their regional manager.</span>
+                <span className="strong">Escalate to {PEOPLE[esc].name}</span><span className="muted">Airgas isn't responding. Add their {PEOPLE[esc].title || 'manager'}.</span>
               </button>
             )}
             <button className="more__item" onClick={() => { setLogOpen(true); setMore(false) }}>

@@ -1,6 +1,7 @@
 // Ticket state changes. Each takes a ticket and returns a new one (never mutates),
 // appending the thread entries the prototype shows for that change.
 import { checkInText, followUpText, notFixedText } from './emails'
+import { getSettings } from './directory'
 import { PEOPLE, isAirgas, suggestEta } from './rules'
 import { fmtDay } from './time'
 import type {
@@ -10,7 +11,7 @@ import type {
 const iso = (d: Date) => d.toISOString()
 const note = (now: Date, text: string): ThreadEntry => ({ kind: 'note', at: iso(now), text })
 const push = (t: Ticket, ...entries: ThreadEntry[]): Ticket => ({ ...t, thread: [...t.thread, ...entries] })
-const SHORT_RESOLVER: Record<ResolvedBy, string> = { israel: 'Israel', robert: 'Robert', javier: 'Javier', airgas: 'Airgas' }
+const shortResolver = (by: ResolvedBy) => (by === 'airgas' ? 'Airgas' : PEOPLE[by].name)
 
 export function startProgress(t: Ticket, by: RiceStaff, now: Date): Ticket {
   if (t.status === 'progress') return t
@@ -28,7 +29,7 @@ export function reopen(t: Ticket, now: Date): Ticket {
 export function complete(t: Ticket, by: ResolvedBy, notes: string, now: Date): Ticket {
   return push(
     { ...t, status: 'done', resolvedBy: by, resolvedAt: iso(now), resolutionNotes: notes.trim() || '(No notes)', etaSuggestion: null, startedAt: t.startedAt ?? iso(now) },
-    note(now, `Completed by ${SHORT_RESOLVER[by]}`),
+    note(now, `Completed by ${shortResolver(by)}`),
   )
 }
 
@@ -47,12 +48,13 @@ export const ignoreEta = (t: Ticket): Ticket => ({ ...t, etaSuggestion: null })
 
 /** A Rice staff member sends an email on the thread. Escalating adds Chris. */
 export function sendEmail(t: Ticket, from: RiceStaff, text: string, now: Date, escalating = false): Ticket {
-  const added: AirgasContact[] = escalating && !t.participants.includes('chris') ? ['chris'] : []
+  const esc = getSettings().escalationContact
+  const added: AirgasContact[] = escalating && esc && !t.participants.includes(esc) ? [esc] : []
   const next = push(
     { ...t, participants: [...t.participants, ...added] },
     { kind: 'email', at: iso(now), from, text: text.trim(), ...(added.length ? { added } : {}) },
   )
-  return added.length ? push(next, note(now, 'Escalated to Chris')) : next
+  return added.length ? push(next, note(now, `Escalated to ${PEOPLE[added[0]].name}`)) : next
 }
 
 /** An email from Airgas arrives. New recipients join the thread; a date in it becomes an ETA suggestion. */
@@ -96,7 +98,7 @@ export function askFixed(t: Ticket, now: Date): Ticket {
 export function confirmDelivery(t: Ticket, fixed: boolean, now: Date, autoClose = true, comment = ''): Ticket {
   if (fixed) {
     const answered = push({ ...t, confirm: 'yes' }, { kind: 'confirm', at: iso(now), text: "Yes, it's fixed.", fixed: true })
-    if (!autoClose) return push(answered, note(now, 'Lab confirmed · ready to close'))
+    if (!autoClose) return push(answered, note(now, `${t.reporter.name.split(' ')[0]} confirmed it's fixed · ready to close`))
     return push(
       { ...answered, status: 'done', resolvedBy: 'airgas', resolvedAt: iso(now), resolutionNotes: 'The reporter confirmed it is fixed.', etaSuggestion: null, startedAt: t.startedAt ?? iso(now) },
       note(now, `Closed: ${t.reporter.name.split(' ')[0]} confirmed it's fixed`),

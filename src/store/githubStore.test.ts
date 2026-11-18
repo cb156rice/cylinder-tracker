@@ -5,6 +5,7 @@ import { GitHubApi, GitHubError } from './githubApi'
 import { fakeGitHub } from './fakeGitHub'
 import { GitHubStore } from './githubStore'
 import { makeSeed } from './seed'
+import { DEFAULT_SETTINGS } from '../lib/directory'
 
 const NOW = fromWall(2026, 11, 4, 10, 12)
 const REPORT = { name: 'A B', email: 'ab@rice.edu', phone: '', order: 'AG-1', building: 'sst' as const, otherBuilding: '', room: '101', category: 'leak' as const, description: '' }
@@ -82,5 +83,20 @@ describe('GitHubStore', () => {
 
     api.runWorkflow = async () => { throw new GitHubError(403, 'Resource not accessible by personal access token') }
     await expect(store.checkMail(undefined, 1)).rejects.toThrow('Actions → Read and write')
+  })
+
+  it('keeps settings in their own issue, which never shows up as a ticket', async () => {
+    const gh = fakeGitHub()
+    const a = new GitHubStore(gh.api())
+    await a.create({ name: 'A', email: 'a@rice.edu', phone: '', order: '1', building: 'sst', otherBuilding: '', room: '1', category: 'leak', description: 'x' })
+    expect((await a.loadSettings()).leads.sst).toBe('israel') // defaults until saved
+    await a.saveSettings({ ...DEFAULT_SETTINGS, leads: { ...DEFAULT_SETTINGS.leads, sst: 'robert' } })
+    await a.saveSettings({ ...DEFAULT_SETTINGS, leads: { ...DEFAULT_SETTINGS.leads, sst: 'javier' } })
+    expect(gh.issues).toHaveLength(2) // one ticket + one settings issue, updated in place
+    expect(gh.issues[1].state).toBe('closed')
+
+    const b = new GitHubStore(gh.api()) // another browser, or the mail job
+    expect((await b.loadSettings()).leads.sst).toBe('javier')
+    expect((await b.list()).map(t => t.id)).toEqual(['RG-1001'])
   })
 })

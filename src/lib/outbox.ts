@@ -3,8 +3,8 @@
 //
 // Sent = there's a note on the same ticket whose ref is `sent:<key>` (the mailer adds it after Gmail accepts
 // the message). The thread is append-only, so nothing is ever edited to mark it sent.
-import { RICE_STAFF } from './rules'
-import type { RiceStaff, ThreadEntry, Ticket } from './types'
+import { person } from './directory'
+import type { ThreadEntry, Ticket } from './types'
 
 /** Emails older than this are never sent (sample tickets, or a mailer that was off for days). */
 export const SEND_WINDOW_MS = 24 * 3600_000
@@ -24,7 +24,7 @@ export function entryKey(e: ThreadEntry): string {
  */
 export function needsSending(e: ThreadEntry): boolean {
   if (e.kind === 'auto') return !e.ref || e.ref.startsWith('report:')
-  if (e.kind === 'email') return !e.ref && RICE_STAFF.includes(e.from as RiceStaff)
+  if (e.kind === 'email') return !e.ref && e.from !== 'tracker' && !person(e.from).airgas
   return false
 }
 

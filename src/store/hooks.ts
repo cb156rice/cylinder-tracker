@@ -1,3 +1,4 @@
+import { getSettings, onSettings, setSettings, type Settings } from '../lib/directory'
 import { useContext, useEffect, useState } from 'react'
 import type { ScheduleEntry, Ticket } from '../lib/types'
 import { StoreContext } from './storeContext'
@@ -22,8 +23,12 @@ export function useTickets(): { tickets: Ticket[]; schedule: ScheduleEntry[]; lo
   const [state, setState] = useState<{ tickets: Ticket[]; schedule: ScheduleEntry[]; loading: boolean }>({ tickets: [], schedule: [], loading: true })
   useEffect(() => {
     let live = true
-    const load = () => Promise.all([store.list(), store.schedule()]).then(([tickets, schedule]) => {
-      if (live) setState({ tickets, schedule, loading: false })
+    // Settings (people, routing) load with the tickets, so names and lists are right on the first render
+    // and pick up changes made on another computer at each refresh.
+    const load = () => Promise.all([store.list(), store.schedule(), store.loadSettings()]).then(([tickets, schedule, settings]) => {
+      if (!live) return
+      setSettings(settings)
+      setState({ tickets, schedule, loading: false })
     })
     load()
     const off = store.subscribe(load)
@@ -56,4 +61,11 @@ export function useStoreStatus(): StoreStatus | null {
   const [status, setStatus] = useState(() => store.status?.() ?? null)
   useEffect(() => store.subscribe(() => setStatus(store.status?.() ?? null)), [store])
   return status
+}
+
+/** The current people and routing settings; re-renders when they change. */
+export function useSettings(): Settings {
+  const [s, set] = useState(getSettings)
+  useEffect(() => onSettings(() => set(getSettings())), [])
+  return s
 }

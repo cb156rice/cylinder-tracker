@@ -10,11 +10,12 @@ export type Category = 'leak' | 'notdelivered' | 'empty' | 'other'
 export type Status = 'open' | 'progress' | 'done'
 export type Complexity = 'low' | 'medium' | 'high'
 
-export type RiceStaff = 'israel' | 'robert' | 'javier'
-export type AirgasContact = 'ruben' | 'gordan' | 'chris'
+/** Ids of people come from the Users page (src/lib/directory.ts); the original six keep their ids. */
+export type RiceStaff = string
+export type AirgasContact = string
 /** Everyone who can appear on a thread. 'tracker' is the automatic sender. */
-export type PersonId = RiceStaff | AirgasContact | 'tracker'
-export type ResolvedBy = RiceStaff | 'airgas'
+export type PersonId = string // a person's id, or 'tracker' for automatic emails
+export type ResolvedBy = string // a Rice person's id, or 'airgas'
 /** "Is it fixed?" check-in with the reporter: null = not asked yet. */
 export type ConfirmState = null | 'asked' | 'yes' | 'no'
 

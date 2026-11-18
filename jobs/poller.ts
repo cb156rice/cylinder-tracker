@@ -2,7 +2,7 @@
 //   [NEW REPORT] email (EmailJS, from the public form) → new ticket
 //   Reply with [RG-####] in the subject                → email on that ticket's thread (ETA detection included)
 // Every entry carries a `ref` (submission id or Message-ID), so running twice never adds anything twice.
-import { config } from '../src/config'
+import { getSettings } from '../src/lib/directory'
 import { confirmDelivery, receiveEmail } from '../src/lib/transitions'
 import type { ThreadEntry, Ticket } from '../src/lib/types'
 import type { GitHubStore } from '../src/store/githubStore'
@@ -64,7 +64,7 @@ export async function pollInbox(mail: MailBox, store: GitHubStore, dir: Director
           const fixed = fixAnswer(text)
           const t = await store.update(id, (t, _now) => fixed === null
             ? { ...t, thread: [...t.thread, { kind: 'note', at: m.date.toISOString(), text: `${t.reporter.name.split(' ')[0]} replied to "Is it fixed?" without a clear YES or NO: ${text}`, ref: m.messageId }] }
-            : withRef(t, confirmDelivery(t, fixed, m.date, config.autoCloseOnConfirm, fixed ? '' : answerNote(text)), m.messageId))
+            : withRef(t, confirmDelivery(t, fixed, m.date, getSettings().autoCloseOnYes, fixed ? '' : answerNote(text)), m.messageId))
           byId.set(id, t); seen.add(m.messageId)
           result.answers.push(`${id} ${fixed === null ? 'unclear' : fixed ? 'YES' : 'NO'}`)
           log(`  ✓ ${id}: reporter answered ${fixed === null ? '(unclear)' : fixed ? 'YES' : 'NO'}`)

@@ -1,11 +1,14 @@
 // Email drafts. Phase 4 sends `draftPrompt` to Claude from a GitHub Action; until then (and as a
 // fallback if Claude is unavailable) the dashboard fills in `templateDraft`.
-import { CATEGORY_LABEL, PEOPLE, STATUS_LABEL, authorName, locationLabel } from './rules'
+import { CATEGORY_LABEL, PEOPLE, STATUS_LABEL, authorName, locationLabel, recipients } from './rules'
 import { fmt, fmtDay } from './time'
 import type { RiceStaff, Ticket } from './types'
 
 export function templateDraft(t: Ticket, me: RiceStaff, escalating: boolean, notes: string): string {
-  const greet = escalating ? 'Hi Chris,\n\nAdding you to this thread' : 'Hi Ruben and Gordan,\n\nFollowing up on this ticket'
+  const r = recipients(t, escalating)
+  const names = (ids: string[]) => ids.map(p => PEOPLE[p].name).join(' and ') || 'Airgas team'
+  const esc = r.to.filter(p => !t.participants.includes(p))
+  const greet = escalating && esc.length ? `Hi ${names(esc)},\n\nAdding you to this thread` : `Hi ${names(r.to)},\n\nFollowing up on this ticket`
   // No signature: the mailer adds the sender's name and role under every email.
   void me
   return `${greet} (${t.id}, order ${t.order}, ${locationLabel(t)}). ${notes.trim() || 'Could you share an ETA for a fix?'}\n\nThanks,`

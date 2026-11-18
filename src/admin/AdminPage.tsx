@@ -1,20 +1,23 @@
 import { useState } from 'react'
-import { RICE_STAFF } from '../lib/rules'
+import { activePeople, getSettings, riceStaff } from '../lib/directory'
 import type { RiceStaff } from '../lib/types'
 import { adminHref, type AdminTab } from '../router'
 import { useNow, useTickets } from '../store/hooks'
 import { HowItWorks } from './HowItWorks'
 import { Queue } from './Queue'
+import { SettingsPage } from './SettingsPage'
+import { UsersPage } from './UsersPage'
 import './admin.css'
 
 const VIEWER_KEY = 'cylinder-tracker:viewer'
-const VIEWER_LABEL: Record<RiceStaff, string> = { javier: 'Javier · Supervisor', israel: 'Israel · SST stockroom', robert: "Robert · O'Connor stockroom" }
+
+const defaultViewer = () => getSettings().alwaysCopied[0] ?? riceStaff()[0] ?? ''
 
 function savedViewer(): RiceStaff {
   try {
     const v = localStorage.getItem(VIEWER_KEY) as RiceStaff | null
-    return v && RICE_STAFF.includes(v) ? v : 'javier'
-  } catch { return 'javier' }
+    return v && riceStaff().includes(v) ? v : defaultViewer()
+  } catch { return defaultViewer() }
 }
 
 export function AdminPage({ tab, ticketId }: { tab: AdminTab; ticketId: string | null }) {
@@ -27,7 +30,7 @@ export function AdminPage({ tab, ticketId }: { tab: AdminTab; ticketId: string |
     try { localStorage.setItem(VIEWER_KEY, v) } catch { /* ignore */ }
   }
 
-  const tabs: [AdminTab, string][] = [['queue', 'Queue'], ['how', 'How it works']]
+  const tabs: [AdminTab, string][] = [['queue', 'Queue'], ['users', 'Users'], ['settings', 'Settings'], ['how', 'How it works']]
 
   return (
     <>
@@ -41,7 +44,7 @@ export function AdminPage({ tab, ticketId }: { tab: AdminTab; ticketId: string |
             <label className="viewer">
               Viewing as
               <select value={viewer} onChange={e => setViewer(e.target.value as RiceStaff)}>
-                {RICE_STAFF.map(p => <option key={p} value={p}>{VIEWER_LABEL[p]}</option>)}
+                {activePeople('rice').map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
               </select>
             </label>
           </div>
@@ -57,6 +60,8 @@ export function AdminPage({ tab, ticketId }: { tab: AdminTab; ticketId: string |
 
       {loading ? null
         : tab === 'queue' ? <Queue tickets={tickets} now={now} viewer={viewer} selectedId={ticketId} />
+        : tab === 'users' ? <UsersPage />
+        : tab === 'settings' ? <SettingsPage />
         : <HowItWorks />}
     </>
   )

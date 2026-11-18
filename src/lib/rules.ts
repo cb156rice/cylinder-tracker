@@ -1,6 +1,7 @@
 // Business rules, ported from the prototype (design/Cylinder Issue Tracker v2.dc.html).
 // Pure functions only: no React, no storage, no styling. The UI maps `tone` values to colors.
 import { detectEta } from './eta'
+import { airgasContacts, getSettings, person, riceStaff } from './directory'
 import { openingEmailText } from './emails'
 import { HOUR, addBiz, bizMs, fromWall, sameDay, type DateKey } from './time'
 import type {
@@ -10,25 +11,13 @@ import type {
 
 // ---- Reference data ----
 
-export const PEOPLE: Record<PersonId, { name: string; role: string; airgas: boolean }> = {
-  ruben: { name: 'Ruben', role: 'Airgas · account manager', airgas: true },
-  gordan: { name: 'Gordan', role: 'Airgas · plant manager', airgas: true },
-  chris: { name: 'Chris', role: 'Airgas · regional manager', airgas: true },
-  israel: { name: 'Israel', role: 'Rice · SST stockroom', airgas: false },
-  robert: { name: 'Robert', role: "Rice · O'Connor stockroom", airgas: false },
-  javier: { name: 'Javier', role: 'Rice · supervisor', airgas: false },
-  tracker: { name: 'Rice Stockroom', role: 'sent automatically', airgas: false },
-}
-export const RICE_STAFF: RiceStaff[] = ['israel', 'robert', 'javier']
-export const AIRGAS_CONTACTS: AirgasContact[] = ['ruben', 'gordan', 'chris']
+/** Display info by person id, from the current Users settings: PEOPLE[id].name / .role / .airgas. */
+export const PEOPLE: Record<PersonId, { name: string; role: string; airgas: boolean; title: string }> =
+  new Proxy({}, { get: (_t, id) => person(String(id)) })
 
-/** Who closed a ticket, as shown in the close-out form. */
-export const RESOLVER_LABEL: Record<ResolvedBy, string> = {
-  israel: 'Israel (SST stockroom)',
-  robert: "Robert (O'Connor stockroom)",
-  javier: 'Javier (Supervisor)',
-  airgas: 'Airgas',
-}
+/** Who closed a ticket: "Israel (SST stockroom)", or "Airgas". */
+export const RESOLVER_LABEL: Record<ResolvedBy, string> =
+  new Proxy({}, { get: (_t, id) => (id === 'airgas' ? 'Airgas' : `${person(String(id)).name} (${person(String(id)).title})`) })
 
 export const BUILDING_LABEL: Record<Exclude<Building, 'other'>, string> = { sst: 'SST', oconnor: "O'Connor" }
 
@@ -129,7 +118,7 @@ export function checkInDue(t: Ticket, now: Date): boolean {
 // ---- Routing and new tickets ----
 
 export function coordinatorFor(building: Building): RiceStaff {
-  return building === 'sst' ? 'israel' : building === 'oconnor' ? 'robert' : 'javier'
+  return getSettings().leads[building]
 }
 
 export function buildingLabel(t: Pick<Ticket, 'building' | 'otherBuilding'>): string {
@@ -182,7 +171,7 @@ export function createTicket(f: ReportInput, id: string, now: Date): Ticket {
     complexity: null,
     startedAt: null,
     coordinator: coordinatorFor(f.building),
-    participants: ['ruben', 'gordan'],
+    participants: [...getSettings().newTicketContacts],
     eta: null,
     etaSuggestion: null,
     confirm: null,
@@ -206,7 +195,7 @@ export function authorName(e: ThreadEntry, t: Ticket): string {
   }
 }
 
-export const isAirgas = (p: PersonId) => PEOPLE[p].airgas
+export const isAirgas = (p: PersonId) => person(p).airgas
 
 /** The most recent email from Airgas, if any. */
 export function lastAirgasEmail(t: Ticket) {
@@ -224,13 +213,15 @@ export function lastMessage(t: Ticket): ThreadEntry | null {
 }
 
 /**
- * Who gets the next email: Airgas contacts on To; the coordinator, Javier (always, as supervisor),
- * other Rice staff and the reporter on Cc.
+ * Who gets the next email: Airgas contacts on the thread on To; the coordinator, everyone set to be
+ * always copied (Settings), other Rice staff on the thread, and the reporter on Cc. Removed people drop off.
  */
 export function recipients(t: Ticket, escalating = false): { to: AirgasContact[]; cc: RiceStaff[] } {
-  const to = t.participants.filter((p): p is AirgasContact => AIRGAS_CONTACTS.includes(p as AirgasContact))
-  if (escalating && !to.includes('chris')) to.push('chris')
-  const cc = [...new Set<RiceStaff>([t.coordinator, 'javier', ...t.participants.filter((p): p is RiceStaff => RICE_STAFF.includes(p as RiceStaff))])]
+  const s = getSettings()
+  const airgas = airgasContacts(), rice = riceStaff()
+  const to = t.participants.filter(p => airgas.includes(p))
+  if (escalating && s.escalationContact && !to.includes(s.escalationContact)) to.push(s.escalationContact)
+  const cc = [...new Set<RiceStaff>([t.coordinator, ...s.alwaysCopied.filter(p => rice.includes(p)), ...t.participants.filter(p => rice.includes(p))])]
   return { to, cc }
 }
 

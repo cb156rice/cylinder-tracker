@@ -2,14 +2,16 @@
 // Everyone with a token sees the same data; the dashboard refreshes every 45 s.
 import { createTicket, validateReport } from '../lib/rules'
 import type { ReportInput, ScheduleEntry, ThreadEntry, Ticket } from '../lib/types'
+import { DEFAULT_SETTINGS, normalize, type Settings } from '../lib/directory'
 import { GitHubApi, GitHubError, issueOfComment, type Comment, type Issue } from './githubApi'
+import {
+  SETTINGS_TITLE, isSettingsBody, issueLabels, issueNumber, issueTitle, parseBody, parseComment, parseSettingsBody,
+  renderBody, renderComment, renderSettingsBody, ticketId, type TicketFields,
+} from './githubFormat'
+import type { Change, StoreStatus, TicketStore } from './store'
 
 /** The mail job's workflow file in the data repo (.github/workflows/mail.yml). */
 export const MAIL_WORKFLOW = 'mail.yml'
-import {
-  issueLabels, issueNumber, issueTitle, parseBody, parseComment, renderBody, renderComment, ticketId, type TicketFields,
-} from './githubFormat'
-import type { Change, StoreStatus, TicketStore } from './store'
 
 interface Cached {
   fields: TicketFields
@@ -25,6 +27,8 @@ export class GitHubStore implements TicketStore {
   private listeners = new Set<() => void>()
   private state: StoreStatus = { syncing: false, error: null, lastSync: null }
   private loaded: Promise<void> | null = null
+  /** The settings issue, once seen. */
+  private settingsIssue: { number: number; settings: Settings | null } | null = null
 
   readonly api: GitHubApi
   private readonly clock: () => Date
@@ -53,6 +57,10 @@ export class GitHubStore implements TicketStore {
       const startedAt = new Date().toISOString()
       const issues = await this.api.listIssues()
       for (const issue of issues) {
+        if (isSettingsBody(issue.body)) {
+          this.settingsIssue = { number: issue.number, settings: parseSettingsBody(issue.body ?? '') }
+          continue
+        }
         const fields = parseBody(issue.body ?? '')
         if (!fields) continue
         const c = this.cache.get(issue.number)
@@ -132,6 +140,27 @@ export class GitHubStore implements TicketStore {
       onProgress?.(++done)
       this.emit()
     }
+  }
+
+  async loadSettings(): Promise<Settings> {
+    await this.list()
+    return this.settingsIssue?.settings ?? normalize(DEFAULT_SETTINGS)
+  }
+
+  /** Saves to the settings issue (creating it, closed, the first time). */
+  async saveSettings(next: Settings): Promise<void> {
+    await this.list()
+    await this.guard(async () => {
+      const body = renderSettingsBody(next)
+      if (this.settingsIssue) {
+        await this.api.updateIssue(this.settingsIssue.number, { body })
+      } else {
+        const issue = await this.api.createIssue(SETTINGS_TITLE, body)
+        await this.api.updateIssue(issue.number, { state: 'closed' })
+        this.settingsIssue = { number: issue.number, settings: null }
+      }
+      this.settingsIssue.settings = normalize(next)
+    })
   }
 
   /**

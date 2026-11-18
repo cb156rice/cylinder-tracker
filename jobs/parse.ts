@@ -1,4 +1,5 @@
 // Pure helpers for turning raw emails into tracker events. No network here, so it's all unit-tested.
+import { activePeople, getSettings } from '../src/lib/directory'
 import { decodePayload, type ReportPayload } from '../src/report/payload'
 import type { AirgasContact, RiceStaff, Ticket } from '../src/lib/types'
 
@@ -92,8 +93,9 @@ export type Speaker =
   | { kind: 'staff'; who: RiceStaff }
   | { kind: 'unknown'; name: string; address: string }
 
-const AIRGAS_NAMES: [RegExp, AirgasContact][] = [[/\bchris\b/i, 'chris'], [/\bgordan\b/i, 'gordan'], [/\bruben\b/i, 'ruben']]
-const STAFF_NAMES: [RegExp, RiceStaff][] = [[/\bjavier\b/i, 'javier'], [/\bisrael\b/i, 'israel'], [/\brobert\b/i, 'robert']]
+/** Sign-off patterns for everyone active in an organization (from the Users page). */
+const namesOf = (org: 'rice' | 'airgas'): [RegExp, string][] =>
+  activePeople(org).map(p => [new RegExp(`\\b${p.name.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), p.id])
 
 /** A sign-off name in the last few lines ("Thanks,\nChris") picks the person; otherwise a sensible default. */
 function signedAs<T>(text: string, names: [RegExp, T][]): T | null {
@@ -105,10 +107,12 @@ function signedAs<T>(text: string, names: [RegExp, T][]): T | null {
 export function identify(fromHeader: string, text: string, t: Ticket, dir: Directory): Speaker {
   const { name, address } = parseAddress(fromHeader)
   if (dir.airgas.includes(address)) {
-    const who = signedAs(text, AIRGAS_NAMES) ?? (t.participants.includes('ruben') ? 'ruben' : 'gordan')
+    // No sign-off: the first Airgas person on the thread, else the first new-ticket contact.
+    const onThread = t.participants.find(p => activePeople('airgas').some(a => a.id === p))
+    const who = signedAs(text, namesOf('airgas')) ?? onThread ?? getSettings().newTicketContacts[0] ?? 'airgas'
     return { kind: 'airgas', who }
   }
-  if (dir.staff.includes(address)) return { kind: 'staff', who: signedAs(text, STAFF_NAMES) ?? t.coordinator }
+  if (dir.staff.includes(address)) return { kind: 'staff', who: signedAs(text, namesOf('rice')) ?? t.coordinator }
   return { kind: 'unknown', name, address }
 }
 

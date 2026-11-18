@@ -8,6 +8,7 @@ import { GitHubApi } from '../src/store/githubApi'
 import { GitHubStore } from '../src/store/githubStore'
 import { Gmail } from './gmail'
 import { parseDirectory } from './parse'
+import { setSettings } from '../src/lib/directory'
 import { timedSteps } from './steps'
 import { sendOutbox } from './mailer'
 import { pollInbox } from './poller'
@@ -22,6 +23,8 @@ async function main() {
   const [owner, repo] = need('GITHUB_REPOSITORY').split('/')
   const store = new GitHubStore(new GitHubApi(need('GITHUB_TOKEN'), owner, repo))
   const gmail = new Gmail({ clientId: need('GMAIL_CLIENT_ID'), clientSecret: need('GMAIL_CLIENT_SECRET'), refreshToken: need('GMAIL_REFRESH_TOKEN') })
+  // People and routing from the dashboard's Users and Settings pages.
+  setSettings(await store.loadSettings())
   const dir = parseDirectory(process.env)
   if (!dir.airgas.length || !dir.staff.length) console.warn('Warning: AIRGAS_ADDRESSES or STAFF_ADDRESSES is empty; replies from them will be treated as unknown senders.')
 
