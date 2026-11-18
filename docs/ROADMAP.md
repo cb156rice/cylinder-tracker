@@ -1,8 +1,11 @@
 # Airgas Cylinder Issue Tracker: Roadmap
 
 Design source: `design/` (from the Claude Design handoff; kept on this computer only and left out of git
-because it has real staff names). The main reference is
-`Cylinder Issue Tracker v2.dc.html`, and `design/README.md` is the spec.
+because it has real staff names). The original reference is `Cylinder Issue Tracker v2.dc.html`, and
+`design/README.md` is the original spec. The workflow has since changed in places (see "Changes from the
+original design" below); this file describes what is built.
+
+*Last updated Nov 18, 2026. Phases 0–3 are done and the system has been tested end to end with real email.*
 
 ## Hosting: GitHub only
 
@@ -10,116 +13,116 @@ Rice can only host on GitHub, so the whole system runs on GitHub. There is no se
 
 | Piece | Runs on | Job |
 |---|---|---|
-| Website (form + admin dashboard) | **GitHub Pages**, public repo `cylinder-tracker` | Static React app. Holds no data. |
-| Database | **GitHub Issues**, private repo `cylinder-tracker-data` | Each ticket is an issue. Thread messages, calls and status changes are comments and labels. |
-| Tracker mailbox | Gmail for the demo (`rice-cylinder-demo@gmail.com`), Rice mailbox later | Everything going to or from Airgas goes through it. |
-| Backend jobs | **GitHub Actions** in the private repo | Read mail, send mail, check deadlines, call Claude |
-| Form email | **EmailJS** | Lets the public form send email without a server |
+| Website (form + admin dashboard) | **GitHub Pages**, public repo `cb156rice/cylinder-tracker` | Static React app. Holds no data. |
+| Database | **GitHub Issues**, private repo `cb156rice/cylinder-tracker-data` | Each ticket is an issue; each timeline entry is a comment. |
+| Tracker mailbox | Gmail `cylindertracker1@gmail.com` for the demo, a Rice mailbox later | Everything to or from Airgas and reporters goes through it. |
+| Backend job | **GitHub Actions** in the private repo (`.github/workflows/mail.yml`) | Reads mail, takes timed steps, sends mail. |
+| Form email | **EmailJS** | Lets the public form send email without a server. |
 
-### How a ticket flows
+## How a ticket moves
 
-1. A lab member submits the form. EmailJS emails the report to the tracker mailbox.
-2. The **mail poller** Action (every 10 min in business hours, plus a "Check now" button) reads the mailbox and creates issue `RG-####`.
-3. The **mailer** Action sends the opening email to Airgas, cc'ing the coordinator and the reporter.
-4. Airgas replies all. The poller matches the reply by the `[RG-####]` tag and adds it as a comment.
-5. Admins use the dashboard, which reads and writes the private repo through the GitHub API.
+1. **Report.** A lab member submits the form. EmailJS emails it to the tracker mailbox.
+2. **Mail job** (every 15 min on weekdays 7 AM–6 PM, hourly otherwise, or right away with **Check mail now**):
+   reads the inbox and creates issue `RG-####`.
+3. **Opening email** to Ruben and Gordan at Airgas. The building lead (SST → Israel, O'Connor → Robert,
+   other → Javier), **Javier (always)** and the reporter are copied.
+4. **Airgas replies all.** The reply lands on the ticket (matched by `[RG-####]` in the subject, quoted text
+   stripped, sender picked from the address and sign-off). Airgas's **first reply moves the ticket to
+   In progress** by itself. A date in a reply ("tomorrow", "Friday", "Nov 20") becomes the expected date;
+   the lead can ignore it if it was read wrong.
+5. **Due dates.** Airgas has 12 business hours to reply. The fix is due at 5 PM on the date Airgas gave,
+   or 2 business days after the report if they never gave one. Late tickets are marked **Late**.
+6. **No reply.** After 12 business hours with no reply, the tracker **follows up** on the thread.
+   If 12 more business hours pass with no reply, the ticket gets a **warning sign** and moves to the top of
+   the queue; the lead can escalate to Chris.
+7. **"Is it fixed?"** The morning after the fix due date, the reporter gets an email with **Yes / No**
+   buttons (or they reply YES or NO). YES closes the ticket. NO reopens it, passes their comment to Airgas
+   on the thread and waits for a new date.
+8. **Rice can step in any time:** reply on the thread from the dashboard (sent by the next mail job), press
+   **Mark fixed**, or under More options escalate to Chris or write down a call or visit.
+
+Business hours are 9 AM–5 PM, Monday–Friday, Houston time.
 
 ### Changes from the original design
 
-| Original design | GitHub-only version | Why |
+| Original design | Built | Why |
 |---|---|---|
-| Replies appear instantly | Within about 10–15 min, plus a "Check mail now" button | Scheduled Actions run every 5 min at most, sometimes late, and free minutes are limited |
-| Form shows the ticket ID right away | "You'll get an email with your ticket number in a few minutes" | The public form can't write to the private repo |
-| One-click "Yes/No" links in the confirmation email | "Reply YES or NO to this email" | Signed links need a server; the poller already reads replies |
-| Rice SSO admin login | GitHub account with access to the private repo (token pasted in once) | No server to handle the SSO login |
-| "Draft with Claude" is instant | About 30–60 s with a "Drafting…" state | The draft runs as an Action so the API key stays secret |
-| Schedule ingestion service | Forward the daily schedule to the tracker mailbox | The poller parses it like any other email |
-
-Everything else matches the design: the queue, statuses, clocks, ETA cards, deliveries tab,
-printouts and the How it works tab.
+| Replies appear instantly | Within about 15 min, or ~1 min with **Check mail now** | Scheduled Actions only; no server |
+| Form shows the ticket ID right away | "You'll get an email with your ticket number" | The public form can't write to the private repo |
+| Coordinator sets status and complexity (Low/Medium/High) | Airgas's first reply sets In progress; no sizes; due date = Airgas's date or 2 business days | Rice usually can't act on these issues; Airgas drives them |
+| Javier emailed only on escalation | Javier copied on every email | Decided Nov 18 |
+| Delivery schedule matching, "Today's deliveries" tab, 4 PM confirmation | Removed; replaced by the "Is it fixed?" check after the due date | Airgas runs its own deliveries; also catches quiet fixes |
+| Visit agenda and driver stop sheet printouts | Removed | Airgas controls visits and driver routes |
+| One-click signed Yes/No links | Yes/No **mailto** buttons that open a reply with YES or NO | Signed links need a server; the poller already reads replies |
+| Rice SSO admin login | GitHub token pasted into the dashboard once | No server to handle SSO |
+| "Draft with Claude" | "Write it for me" fills a simple template (Claude is Phase 4) | Needs an Anthropic API key |
 
 ---
 
-## Phase 0: Setup ✅ done Nov 4, 2026
+## Phase 0: Setup ✅ Nov 4, 2026
 
-- [x] Two repos: public `cb156rice/cylinder-tracker` (site), private `cb156rice/cylinder-tracker-data` (data + backend Actions)
-- [x] Demo Gmail account `cylindertracker1@gmail.com`. App passwords weren't available on it, so mail access uses the
-      **Gmail API with an OAuth refresh token** (Google Cloud project `cylinder-tracker`, Desktop client, scope `gmail.modify`)
-- [x] EmailJS account, Gmail service and template; the "To" address is fixed in the template, not in the page
-- [x] Gmail secrets in the private repo's Actions secrets: `GMAIL_ADDRESS`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`
+- [x] Two repos: public `cb156rice/cylinder-tracker` (site), private `cb156rice/cylinder-tracker-data` (data + mail job)
+- [x] Gmail `cylindertracker1@gmail.com` through the **Gmail API with an OAuth refresh token** (Google Cloud project
+      `cylinder-tracker`, Desktop client, scope `gmail.modify`; the app must stay "In production" or the token expires in 7 days)
+- [x] EmailJS service and template; the "To" address is fixed in the template
+- [x] Secrets in the data repo: `GMAIL_ADDRESS`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`
 - [x] Site deploys to https://cb156rice.github.io/cylinder-tracker/ on every push to `main`
-- [ ] Anthropic API key, saved as `ANTHROPIC_API_KEY` in the private repo's Actions secrets (needed in Phase 4)
 
-## Phase 1: Front end with fake data (1–2 weeks part-time)
+## Phase 1: Front end with sample data ✅ Nov 4, 2026
 
-A working version of every screen, deployed on Pages, with seed data kept in the browser.
-This is already a usable demo if the later phases slip.
+- [x] Vite + React + TypeScript; business rules in `src/lib/` with unit tests
+- [x] Public report form; admin queue (To do / Late / Completed / All), ticket panel, email timeline
+- [x] All data behind one `TicketStore` interface (browser demo store or GitHub store)
 
-- [x] Vite + React + TypeScript, with automatic deployment to GitHub Pages
-- [x] Port the business rules from the prototype into `src/lib/` with unit tests: business hours
-      (`bizMs`, `addBiz`), deadline clocks, routing by building, ETA detection, "to discuss" rules
-- [x] Public report form, success state, FAQ and install guide placeholders
-- [x] Admin queue: summary cards, filters, table, ticket panel, email thread timeline
-- [x] Ticket actions: status, complexity, close-out, Set ETA / Ignore, log call/visit
-- [x] Today's deliveries tab, visit agenda and driver stop sheet (printable)
-- [x] Keep data behind one interface (`TicketStore`), so Phase 2 swaps the store without touching screens
+## Phase 2: GitHub Issues as the database ✅ Nov 13, 2026
 
-**Done when:** every button in the design does something believable on the live Pages URL.
+- [x] `GitHubStore`: tickets as issues, timeline entries as append-only comments, labels for filtering
+- [x] Connect dialog (fine-grained token saved in the browser), refresh every 45 s
+- [x] Tested live: sample import, edits, two browsers
 
-## Phase 2: GitHub Issues as the database (about 1 week)
+## Phase 3: Real email, the boss demo ✅ Nov 18, 2026
 
-- [x] `GitHubStore`: reads and writes tickets as issues, labels and comments in the private repo
-- [x] Admin sign-in screen: paste a fine-grained GitHub token, saved in the browser
-- [x] Ticket format: a small JSON block in the issue body for fields (order, building, ETA…),
-      comments tagged by kind (email in/out, call, note)
-- [x] Polling refresh in the dashboard (every 30–60 s)
+- [x] Form → EmailJS → tracker mailbox
+- [x] Mail poller: new tickets, reply matching, quoted-text stripping, sender detection, YES/NO answers
+- [x] Mailer: opening emails, dashboard replies, follow-ups, check-ins; threaded (`In-Reply-To`/`References`);
+      HTML + plain text from one set of templates (`src/lib/emails.ts`)
+- [x] Timed steps in the same job: 12-hour follow-up, "Is it fixed?" check-in (real form tickets only)
+- [x] **Demo mode:** Airgas people → `AIRGAS_ADDRESSES`, Rice staff and reporters → `STAFF_ADDRESSES`
+      (data repo variables); every email starts with who it would really go to. Real Airgas staff are never emailed.
+- [x] Dashboard redesign: one next step per ticket, due dates instead of timers, color only for Late,
+      warning sign for no reply after follow-up
+- [x] **Check mail now** button (LIVE bar). The dashboard token needs **Actions: Read and write** in addition to
+      **Issues: Read and write**.
 
-**Done when:** two people on different computers see the same tickets and changes.
+Tested end to end with real mail on Nov 18 (RG-1010): report → opening email → Airgas reply-all → moved to
+In progress with a date → dashboard reply → "Is it fixed?" → YES → closed.
 
-*Done Nov 13, 2026: tested live against cylinder-tracker-data (sample import, edits, two browsers).*
+## Phase 4: Claude (optional, needs an Anthropic API key)
 
-## Phase 3: Real email, the boss demo (about 1 week)
-
-- [x] Form sends through EmailJS to the tracker mailbox
-- [x] Mail poller Action: read through the Gmail API, ticket creation, reply matching by `[RG-####]`,
-      quoted-text stripping, new participant detection
-- [x] Mailer Action: sends thread messages with `[RG-####]` subjects and threading headers
-- [ ] "Check mail now" button (starts the poller through the GitHub API)
-- [x] **Demo mode:** every outgoing email goes to your personal address, with a header line
-      "Would go to: Ruben, Gordan · cc Israel, reporter". Real Airgas staff are never emailed.
-
-**Done when (the demo):** your boss submits the form, the "Airgas" email arrives in your inbox,
-you reply all, and the reply shows on the ticket with an "ETA found" card.
-
-## Phase 4: Automation and Claude (1–2 weeks)
-
-- [ ] Deadline check (runs inside the mail poller job to save Actions minutes): overdue flag, email to Javier, follow-up on the thread
-- [ ] "Draft with Claude" and "Escalate to Chris" as Actions using the prompts in `draftAi()`; drafts are never sent until an admin presses Send
-- [ ] Claude reads ETAs out of replies (replaces the regex)
-- [ ] Delivery schedule parsing from forwarded emails
-- [ ] 4 PM "Did it get fixed? Reply YES or NO" emails and reply handling
+- [ ] Save `ANTHROPIC_API_KEY` in the data repo's Actions secrets
+- [ ] "Write it for me" drafts with Claude as an Action (prompts in `draftPrompt()` in `src/lib/draft.ts`);
+      drafts are never sent until someone presses Send
+- [ ] Claude reads dates out of replies (replaces the pattern matching in `src/lib/eta.ts`)
 
 ## Phase 5: Going live at Rice
 
 Questions for Rice IT and the stockroom:
 
 - [ ] **Mailbox:** can we have `cylinder-issues@rice.edu`? Rice's Microsoft 365 likely needs an app
-      registration (Microsoft Graph) instead of IMAP. Otherwise, keep a dedicated Gmail.
+      registration (Microsoft Graph) instead of the Gmail API. Otherwise, keep a dedicated Gmail.
 - [ ] **Data:** is storing reporter names and emails in a private GitHub repo allowed?
 - [ ] **GitHub account:** who owns the repos long term (a Rice GitHub organization, not a student account)?
-- [ ] Open questions from `design/README.md`: schedule format, auto-close on YES, Rice holidays,
-      other buildings, RUPD/EHS number, FAQ and install guide content from Robert
-- [ ] Turn off demo mode, add real addresses, handover notes
+- [ ] Open questions: should a reporter's YES close the ticket or wait for the lead (`autoCloseOnConfirm`,
+      now on)? Should Rice holidays pause the clock? Which other buildings get cylinders, and who coordinates them?
+- [ ] FAQ and install guide content for the public form (from Robert)
+- [ ] Turn off demo mode: real addresses for Ruben, Gordan, Chris, Israel, Robert, Javier; send to reporters directly
 
 ## Known limits of the GitHub-only setup
 
-- Replies and new reports show up within minutes, not seconds.
-- Admins need GitHub accounts.
-- GitHub Actions minutes are limited for private repos (2,000/month free, 3,000 with GitHub Pro
-  from the Student Developer Pack), and **each run counts as at least 1 full minute**. Polling every
-  5 min around the clock would use about 8,600 min/month. So: run the poller and the deadline
-  check as **one job**, every 10 min during business hours (Mon–Fri 8 AM–6 PM, about 1,300 runs a month),
-  hourly at night, and use the "Check mail now" button for the demo itself.
-  Rice's GitHub plan may raise the limit.
+- Replies and new reports show up within minutes, not seconds (or about a minute with Check mail now).
+- Admins need GitHub accounts and a token. Tokens expire: the push token around **Feb 2, 2027**, the
+  dashboard token 90 days after it was made.
+- GitHub Actions minutes are limited on private repos (2,000/month free). Each run bills at least 1 minute;
+  the current schedule is about 1,600 runs a month, so there is little room to run it more often.
 - If Rice ever approves a real server, the front end and business rules carry over;
   only the Actions and the `GitHubStore` get replaced.
