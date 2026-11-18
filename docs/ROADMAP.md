@@ -91,6 +91,9 @@ Business hours are 9 AM–5 PM, Monday–Friday, Houston time.
       (data repo variables); every email starts with who it would really go to. Real Airgas staff are never emailed.
 - [x] Dashboard redesign: one next step per ticket, due dates instead of timers, color only for Late,
       warning sign for no reply after follow-up
+- [x] **Users and Settings pages:** people (name, title, email, GitHub username), building leads, who gets new
+      tickets, who is always copied, escalation contact, close on YES. Stored as one closed settings issue in the
+      data repo (`src/lib/directory.ts`, `githubFormat.ts`); the mail job loads it at the start of each run.
 - [x] **Check mail now** button (LIVE bar). The dashboard token needs **Actions: Read and write** in addition to
       **Issues: Read and write**.
 
@@ -115,7 +118,9 @@ Questions for Rice IT and the stockroom:
 - [ ] Open questions: should a reporter's YES close the ticket or wait for the lead (`autoCloseOnConfirm`,
       now on)? Should Rice holidays pause the clock? Which other buildings get cylinders, and who coordinates them?
 - [ ] FAQ and install guide content for the public form (from Robert)
-- [ ] Turn off demo mode: real addresses for Ruben, Gordan, Chris, Israel, Robert, Javier; send to reporters directly
+- [ ] Login page for the admin view: check the signed-in GitHub username against the Users page (real access control is
+      GitHub repo access; the login page decides what the dashboard shows)
+- [ ] Turn off demo mode: fill in real addresses on the Users page, then make the mailer send to them and to reporters
 
 ## Known limits of the GitHub-only setup
 

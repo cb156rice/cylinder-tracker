@@ -31,6 +31,10 @@ then turning off demo mode).
   Check-in has Yes/No mailto buttons. Replies are recognized by "fixed?" in the subject.
 - **Outbox rule** (`src/lib/outbox.ts`): an entry is sent when there's no `sent:<key>` note for it; only entries from
   the last 24 h are sent (old sample tickets never email).
+- **Users and Settings pages** (`src/admin/UsersPage.tsx`, `SettingsPage.tsx`): people and routing are data now
+  (`src/lib/directory.ts`; `PEOPLE`/`RESOLVER_LABEL` are live lookups). Saved as one closed issue in the data repo
+  ("Tracker settings…"), loaded by the dashboard on each refresh and by the mail job at start. Defaults = the original
+  six with no emails. The settings issue uses up one issue number (a ticket ID gets skipped).
 - **Check mail now** button in the LIVE bar (`GitHubStore.checkMail`): starts `mail.yml` and waits for it.
 - Data repo setup done by Claude with the `gh` CLI (installed via Homebrew this session): variables
   `AIRGAS_ADDRESSES`, `STAFF_ADDRESSES`; workflow `.github/workflows/mail.yml` (copy of `jobs/data-repo-workflow.yml`).
