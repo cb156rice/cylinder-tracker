@@ -2,7 +2,7 @@
 // 2:30 PM). Here every timestamp is moved so it sits the same number of *business* hours before
 // the real "now", and every ETA the same number of business days from today. Deadline clocks
 // therefore read exactly as in the prototype, whatever day the demo runs.
-import { openingEmailText } from '../lib/rules'
+import { openingEmailText } from '../lib/emails'
 import {
   addBizDays, bizDaysBetween, bizMs, dayKey, fromWall, isWeekend, subBiz, type DateKey,
 } from '../lib/time'

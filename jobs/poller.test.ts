@@ -5,7 +5,7 @@ import { GitHubStore } from '../src/store/githubStore'
 import { encodePayload, makePayload } from '../src/report/payload'
 import type { Mail } from './gmail'
 import { pollInbox, PROCESSED, SKIPPED, type MailBox } from './poller'
-import { fixAnswer, identify, parseAddress, stripQuoted } from './parse'
+import { answerNote, fixAnswer, identify, parseAddress, stripQuoted } from './parse'
 
 const NOW = fromWall(2026, 11, 13, 10, 0)
 const DIR = { airgas: ['airgas@example.com'], staff: ['staff@example.com'] }
@@ -101,6 +101,8 @@ describe('email parsing', () => {
     expect(fixAnswer('No, still empty')).toBe(false)
     expect(fixAnswer('Not yet')).toBe(false)
     expect(fixAnswer('I think so?')).toBeNull()
+    expect(answerNote('no - still hissing\n\nThanks')).toBe('still hissing')
+    expect(answerNote('NO')).toBe('')
   })
 
   it('strips Gmail, Outlook and quote-line replies', () => {

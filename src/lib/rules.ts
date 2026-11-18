@@ -1,7 +1,8 @@
 // Business rules, ported from the prototype (design/Cylinder Issue Tracker v2.dc.html).
 // Pure functions only: no React, no storage, no styling. The UI maps `tone` values to colors.
 import { detectEta } from './eta'
-import { HOUR, addBiz, bizMs, fmtDay, fromWall, sameDay, type DateKey } from './time'
+import { openingEmailText } from './emails'
+import { HOUR, addBiz, bizMs, fromWall, sameDay, type DateKey } from './time'
 import type {
   AirgasContact, Building, Category, EtaSuggestion, PersonId, ReportInput,
   ResolvedBy, RiceStaff, Status, Ticket, ThreadEntry,
@@ -97,18 +98,6 @@ export function followUpDue(t: Ticket, now: Date): boolean {
   return t.status === 'open' && !lastAirgasEmail(t) && !t.thread.some(isFollowUp) && bizMs(new Date(t.createdAt), now) > RESPONSE_LIMIT
 }
 
-export function followUpText(t: Ticket): string {
-  return [
-    'Hi Ruben and Gordan,',
-    '',
-    `Following up on ${problemPhrase(t)} (order ${t.order}), reported ${niceDay(new Date(t.createdAt))}. We haven't seen a reply yet.`,
-    '',
-    'Could you reply all with next steps and the date you expect it to be taken care of?',
-    '',
-    'Thanks,',
-    'Rice Stockroom',
-  ].join('\n')
-}
 
 /** We followed up and Airgas still hasn't replied after another 12 business hours: the follow-up's time, else null. */
 export function noReplyWarning(t: Ticket, now: Date): Date | null {
@@ -136,47 +125,6 @@ export function checkInDue(t: Ticket, now: Date): boolean {
   return !asked || new Date(asked.at) < due
 }
 
-/** How the check-in email names the problem: "the leak in SST 315". */
-const PROBLEM_PHRASE: Record<Category, string> = {
-  leak: 'the leaking cylinder',
-  notdelivered: 'the missed delivery',
-  empty: 'the empty cylinder',
-  other: 'the cylinder problem',
-}
-export const problemPhrase = (t: Ticket) => `${PROBLEM_PHRASE[t.category]} in ${locationLabel(t)}`
-
-const niceDay = (x: Date | DateKey) => fmtDay(x).replace(' ', ', ') // "Wed, Nov 18"
-
-/** Subject of the check-in. Replies keep "fixed?" in the subject, which is how the poller recognizes them. */
-export const checkInSubject = (t: Ticket) => `[${t.id}] Quick check: is ${problemPhrase(t)} fixed?`
-
-export function checkInText(t: Ticket): string {
-  const name = t.reporter.name.split(' ')[0] || t.reporter.name
-  const date = airgasDate(t)
-  const promise = date
-    ? `Airgas said it would be taken care of by ${niceDay(date)}.`
-    : 'Airgas was asked to take care of it within 2 business days.'
-  const desc = t.description.length > 200 ? t.description.slice(0, 197).trimEnd() + '…' : t.description
-  return [
-    `Hi ${name},`,
-    '',
-    `On ${niceDay(new Date(t.createdAt))} you reported ${problemPhrase(t)}:`,
-    `"${desc}"`,
-    '',
-    `${promise} Is it fixed now?`,
-    '',
-    'Just reply to this email with one word:',
-    '',
-    "  YES  It's fixed. We'll close the ticket.",
-    "  NO   It's still a problem. We'll follow up with Airgas right away.",
-    '',
-    "If it's a NO, a line about what's still wrong helps.",
-    '',
-    'Thanks,',
-    'Rice Stockroom',
-    `Ticket ${t.id} · Order ${t.order}`,
-  ].join('\n')
-}
 
 // ---- Routing and new tickets ----
 
@@ -212,11 +160,6 @@ export function nextTicketId(tickets: Pick<Ticket, 'id'>[], first = 1001): strin
   return `RG-${max + 1}`
 }
 
-export function openingEmailText(t: Ticket): string {
-  return `Order ${t.order} · ${locationLabel(t)}\n${CATEGORY_LABEL[t.category]}: ${t.description}\n` +
-    `Contact: ${t.reporter.name}, ${t.reporter.email}${t.reporter.phone ? ', ' + t.reporter.phone : ''}\n\n` +
-    'Please reply all with next steps and an ETA.'
-}
 
 export function openingSubject(t: Ticket): string {
   return `[${t.id}] ${CATEGORY_LABEL[t.category]} · ${locationLabel(t)}`

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   clock, coordinatorFor, createTicket, deadline, locationLabel,
-  checkInDue, checkInText, fixDue, followUpDue, noReplyWarning, nextTicketId, openingSubject, recipients, threadState, validateReport,
+  checkInDue, fixDue, followUpDue, noReplyWarning, nextTicketId, openingSubject, recipients, threadState, validateReport,
 } from './rules'
+import { checkInText } from './emails'
 import { askFixed, followUp, receiveEmail } from './transitions'
 import { fromWall } from './time'
 import type { ReportInput, Ticket } from './types'
@@ -34,8 +35,9 @@ describe('routing and new tickets', () => {
     expect(t).toMatchObject({ status: 'open', coordinator: 'israel', participants: ['ruben', 'gordan'], createdAt: NOW.toISOString() })
     expect(t.thread).toHaveLength(1)
     expect(t.thread[0].kind).toBe('auto')
-    expect(t.thread[0].text).toContain('Order AG-58213947 · SST 214')
-    expect(t.thread[0].text).toContain('Please reply all with next steps and an ETA.')
+    expect(t.thread[0].text).toContain('Hi Ruben and Gordan,')
+    expect(t.thread[0].text).toContain('Location: SST, room 214')
+    expect(t.thread[0].text).toContain('Order:    AG-58213947')
     expect(openingSubject(t)).toBe('[RG-1047] Leak · SST 214')
   })
   it('labels other buildings', () => {

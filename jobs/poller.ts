@@ -7,7 +7,7 @@ import { confirmDelivery, receiveEmail } from '../src/lib/transitions'
 import type { ThreadEntry, Ticket } from '../src/lib/types'
 import type { GitHubStore } from '../src/store/githubStore'
 import type { Mail } from './gmail'
-import { fixAnswer, identify, isCheckInReply, reportFromEmail, stripQuoted, ticketNumberInSubject, type Directory } from './parse'
+import { answerNote, fixAnswer, identify, isCheckInReply, reportFromEmail, stripQuoted, ticketNumberInSubject, type Directory } from './parse'
 
 export interface MailBox {
   search(q: string): Promise<string[]>
@@ -64,7 +64,7 @@ export async function pollInbox(mail: MailBox, store: GitHubStore, dir: Director
           const fixed = fixAnswer(text)
           const t = await store.update(id, (t, _now) => fixed === null
             ? { ...t, thread: [...t.thread, { kind: 'note', at: m.date.toISOString(), text: `${t.reporter.name.split(' ')[0]} replied to "Is it fixed?" without a clear YES or NO: ${text}`, ref: m.messageId }] }
-            : withRef(t, confirmDelivery(t, fixed, m.date, config.autoCloseOnConfirm), m.messageId))
+            : withRef(t, confirmDelivery(t, fixed, m.date, config.autoCloseOnConfirm, fixed ? '' : answerNote(text)), m.messageId))
           byId.set(id, t); seen.add(m.messageId)
           result.answers.push(`${id} ${fixed === null ? 'unclear' : fixed ? 'YES' : 'NO'}`)
           log(`  ✓ ${id}: reporter answered ${fixed === null ? '(unclear)' : fixed ? 'YES' : 'NO'}`)

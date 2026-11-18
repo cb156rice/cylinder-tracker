@@ -1,6 +1,7 @@
 // Ticket state changes. Each takes a ticket and returns a new one (never mutates),
 // appending the thread entries the prototype shows for that change.
-import { PEOPLE, checkInText, followUpText, isAirgas, suggestEta } from './rules'
+import { checkInText, followUpText, notFixedText } from './emails'
+import { PEOPLE, isAirgas, suggestEta } from './rules'
 import { fmtDay } from './time'
 import type {
   AirgasContact, ResolvedBy, RiceStaff, Ticket, ThreadEntry,
@@ -92,7 +93,7 @@ export function askFixed(t: Ticket, now: Date): Ticket {
  * Yes → close (or mark ready to close when autoClose is off). No → In progress, clear Airgas's date
  * (it passed without a fix), and tell Airgas on the thread.
  */
-export function confirmDelivery(t: Ticket, fixed: boolean, now: Date, autoClose = true): Ticket {
+export function confirmDelivery(t: Ticket, fixed: boolean, now: Date, autoClose = true, comment = ''): Ticket {
   if (fixed) {
     const answered = push({ ...t, confirm: 'yes' }, { kind: 'confirm', at: iso(now), text: "Yes, it's fixed.", fixed: true })
     if (!autoClose) return push(answered, note(now, 'Lab confirmed · ready to close'))
@@ -103,8 +104,8 @@ export function confirmDelivery(t: Ticket, fixed: boolean, now: Date, autoClose 
   }
   return push(
     { ...t, confirm: 'no', status: 'progress', startedAt: t.startedAt ?? iso(now), eta: null, etaSuggestion: null },
-    { kind: 'confirm', at: iso(now), text: 'No, still a problem.', fixed: false },
-    { kind: 'auto', at: iso(now), text: `${t.reporter.name} says this is still not fixed (${t.id}, order ${t.order}). Please reply all with next steps and a new date.` },
+    { kind: 'confirm', at: iso(now), text: comment ? `No, still a problem: ${comment}` : 'No, still a problem.', fixed: false },
+    { kind: 'auto', at: iso(now), text: notFixedText(t, comment) },
     note(now, `${t.reporter.name.split(' ')[0]} says it's not fixed`),
   )
 }

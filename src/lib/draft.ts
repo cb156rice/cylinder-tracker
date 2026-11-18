@@ -6,7 +6,9 @@ import type { RiceStaff, Ticket } from './types'
 
 export function templateDraft(t: Ticket, me: RiceStaff, escalating: boolean, notes: string): string {
   const greet = escalating ? 'Hi Chris,\n\nAdding you to this thread' : 'Hi Ruben and Gordan,\n\nFollowing up on this ticket'
-  return `${greet} (${t.id}, order ${t.order}, ${locationLabel(t)}). ${notes.trim() || 'Could you share an ETA for a fix?'}\n\nThanks,\n${PEOPLE[me].name}\nRice Stockroom`
+  // No signature: the mailer adds the sender's name and role under every email.
+  void me
+  return `${greet} (${t.id}, order ${t.order}, ${locationLabel(t)}). ${notes.trim() || 'Could you share an ETA for a fix?'}\n\nThanks,`
 }
 
 /** The system and user prompts from the prototype's draftAi(). */

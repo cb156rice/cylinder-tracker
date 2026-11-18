@@ -19,7 +19,12 @@ function fakeSender() {
 }
 
 const header = (raw: string, name: string) => new RegExp(`^${name}: (.*)$`, 'm').exec(raw)?.[1] ?? null
-const body = (raw: string) => Buffer.from(raw.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8').replace(/\r\n/g, '\n')
+/** Decoded MIME part of the given type (plain text by default). */
+const part = (raw: string, type = 'text/plain') => {
+  const chunk = raw.split(/\r\n--=_ct_/).find(c => c.includes(`Content-Type: ${type};`))!
+  return Buffer.from(chunk.split('\r\n\r\n')[1].replace(/\r\n/g, ''), 'base64').toString('utf8').replace(/\r\n/g, '\n')
+}
+const body = (raw: string) => part(raw)
 
 describe('sendOutbox', () => {
   it('sends the opening email and dashboard replies once each, threaded, to the demo addresses only', async () => {
@@ -32,7 +37,10 @@ describe('sendOutbox', () => {
     expect(header(sent[0], 'To')).toBe('airgas@example.com')
     expect(header(sent[0], 'Cc')).toBe('staff@example.com')
     expect(header(sent[0], 'In-Reply-To')).toBeNull()
-    expect(body(sent[0])).toContain('would go to: Ruben, Gordan · cc Israel, Javier, Wei (reporter)')
+    expect(body(sent[0])).toContain('In real use this goes to Ruben, Gordan · cc Israel, Javier, Wei (reporter).')
+    expect(body(sent[0])).toContain('Hi Ruben and Gordan,')
+    expect(part(sent[0], 'text/html')).toContain('Cylinder issue RG-1001')
+    expect(sent[0]).toMatch(/Content-Type: multipart\/alternative/)
     expect(body(sent[0])).toContain('keep [RG-1001] in the subject')
     expect(body(sent[0])).not.toContain('wc@rice.edu>') // the reporter is never a real recipient in demo mode
     expect(sent[0]).not.toMatch(/^(To|Cc):.*wc@rice\.edu/m)
@@ -42,7 +50,7 @@ describe('sendOutbox', () => {
     expect(r2.sent).toEqual(['RG-1001 (Israel)'])
     expect(header(sent[1], 'In-Reply-To')).toBe('<g1@mail.gmail.com>')
     expect(body(sent[1])).toContain('Ruben, Gordan, Chris')
-    expect(body(sent[1])).toContain('Any update?\n\nIsrael')
+    expect(body(sent[1])).toContain('Any update?\n\nIsrael\nSST stockroom · Rice University')
 
     const r3 = await sendOutbox(box, store, DIR, NOW, () => {})
     expect(r3.sent).toEqual([])
@@ -74,7 +82,9 @@ describe('sendOutbox', () => {
     expect(header(sent[1], 'To')).toBe('staff@example.com')
     expect(header(sent[1], 'Cc')).toBeNull()
     expect(header(sent[1], 'In-Reply-To')).toBeNull()
-    expect(body(sent[1])).toContain('would go to: Wei Chen <wc@rice.edu>')
+    expect(body(sent[1])).toContain('In real use this goes to Wei Chen <wc@rice.edu>.')
+    expect(part(sent[1], 'text/html')).toContain('mailto:')
+    expect(part(sent[1], 'text/html')).toContain('body=YES')
 
     // The next Airgas email still threads onto the opening email, not the check-in.
     await store.update('RG-1001', (t, n) => sendEmail(t, 'israel', 'Update?', n))

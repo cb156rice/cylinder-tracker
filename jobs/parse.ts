@@ -17,6 +17,11 @@ export function ticketNumberInSubject(subject: string): number | null {
 /** A reply to the "Is it fixed?" email: its subject keeps that question. */
 export const isCheckInReply = (subject: string) => /\bfixed\?/i.test(subject)
 
+/** Whatever the reporter wrote after YES/NO ("No - still hissing" → "still hissing"). */
+export function answerNote(text: string): string {
+  return text.trim().replace(/^(yes|yep|yeah|y|fixed|no|nope|n|not)\b[\s,.:;!\-–—]*/i, '').split(/\n\s*\n/)[0].trim()
+}
+
 /** YES → true, NO → false, anything else → null. Only the first words count (the rest is quoted text or a note). */
 export function fixAnswer(text: string): boolean | null {
   const first = text.trim().split(/\s+/).slice(0, 3).join(' ').toLowerCase()
