@@ -80,12 +80,12 @@ This is already a usable demo if the later phases slip.
 
 ## Phase 3: Real email, the boss demo (about 1 week)
 
-- [ ] Form sends through EmailJS to the tracker mailbox
-- [ ] Mail poller Action: read through the Gmail API, ticket creation, reply matching by `[RG-####]`,
+- [x] Form sends through EmailJS to the tracker mailbox
+- [x] Mail poller Action: read through the Gmail API, ticket creation, reply matching by `[RG-####]`,
       quoted-text stripping, new participant detection
-- [ ] Mailer Action: sends thread messages with `[RG-####]` subjects and threading headers
+- [x] Mailer Action: sends thread messages with `[RG-####]` subjects and threading headers
 - [ ] "Check mail now" button (starts the poller through the GitHub API)
-- [ ] **Demo mode:** every outgoing email goes to your personal address, with a header line
+- [x] **Demo mode:** every outgoing email goes to your personal address, with a header line
       "Would go to: Ruben, Gordan · cc Israel, reporter". Real Airgas staff are never emailed.
 
 **Done when (the demo):** your boss submits the form, the "Airgas" email arrives in your inbox,
