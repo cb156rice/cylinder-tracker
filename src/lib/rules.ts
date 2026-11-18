@@ -1,7 +1,7 @@
 // Business rules, ported from the prototype (design/Cylinder Issue Tracker v2.dc.html).
 // Pure functions only: no React, no storage, no styling. The UI maps `tone` values to colors.
 import { detectEta } from './eta'
-import { HOUR, addBiz, bizMs, dur, fmtDay, sameDay, type DateKey } from './time'
+import { HOUR, addBiz, bizMs, dur, sameDay, type DateKey } from './time'
 import type {
   AirgasContact, Building, Category, Complexity, EtaSuggestion, PersonId, ReportInput,
   ResolvedBy, RiceStaff, Status, Ticket, ThreadEntry,
@@ -38,14 +38,6 @@ export const CATEGORIES: { key: Category; label: string; hint: string }[] = [
   { key: 'other', label: 'Others', hint: 'Anything else (please describe below)' },
 ]
 export const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(c => [c.key, c.label])) as Record<Category, string>
-
-/** What the driver should do, by category (driver stop sheet). */
-export const DRIVER_ACTION: Record<Category, string> = {
-  leak: 'Swap and remove leaking cylinder',
-  notdelivered: 'Deliver order',
-  empty: 'Swap for a full cylinder',
-  other: 'See notes / call contact',
-}
 
 export const STATUS_LABEL: Record<Status, string> = { open: 'Not started', progress: 'In progress', done: 'Completed' }
 
@@ -224,38 +216,6 @@ export function suggestEta(t: Ticket, from: PersonId, text: string, now: Date): 
   const date = detectEta(text, now)
   if (date && !(t.eta && sameDay(t.eta, date))) return { date, quote: text, from }
   return t.etaSuggestion
-}
-
-// ---- Printouts ----
-
-/** The "To discuss" column on the visit agenda. */
-export function agendaAsk(t: Ticket): string {
-  if (!lastAirgasEmail(t)) return 'No reply on the thread yet'
-  if (t.etaSuggestion) return 'Confirm the suggested ETA'
-  if (!t.eta) return 'Need a firm ETA'
-  if (t.confirm === 'no') return 'Lab says not fixed after delivery'
-  return `Confirm it arrives ${fmtDay(t.eta)}`
-}
-
-/** The ETA column on the visit agenda: a suggested date shows with "?". */
-export function agendaEta(t: Ticket): string {
-  if (t.eta) return fmtDay(t.eta)
-  if (t.etaSuggestion) return `${fmtDay(t.etaSuggestion.date)}?`
-  return '—'
-}
-
-/** Open tickets grouped by building, each group sorted by room (driver stop sheet). */
-export function driverGroups(tickets: Ticket[]): { building: string; tickets: Ticket[] }[] {
-  const groups = new Map<string, Ticket[]>()
-  for (const t of tickets) {
-    if (t.status === 'done') continue
-    const b = buildingLabel(t)
-    groups.set(b, [...(groups.get(b) ?? []), t])
-  }
-  return [...groups].map(([building, list]) => ({
-    building,
-    tickets: list.sort((a, b) => a.room.localeCompare(b.room, undefined, { numeric: true })),
-  }))
 }
 
 // ---- Deliveries ----

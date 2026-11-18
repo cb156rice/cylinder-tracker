@@ -1,10 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { CATEGORY_LABEL, clock, locationLabel } from '../lib/rules'
 import type { RiceStaff, ScheduleEntry, Ticket } from '../lib/types'
 import { adminHref, go } from '../router'
 import { dueInfo, threadSummary } from './display'
 import { StatusPill } from './StatusPill'
-import { Printouts, type PrintoutKind } from './Printouts'
 import { TicketPanel } from './TicketPanel'
 import { useStore } from '../store/hooks'
 import { GitHubStore } from '../store/githubStore'
@@ -17,7 +16,6 @@ const FILTERS: [Filter, string][] = [['todo', 'To do'], ['overdue', 'Late'], ['d
 export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tickets: Ticket[]; schedule: ScheduleEntry[]; now: Date; viewer: RiceStaff; selectedId: string | null; ask: string | null }) {
   const [mine, setMine] = useState(false)
   const [filter, setFilter] = useState<Filter>('todo')
-  const [printout, setPrintout] = useState<PrintoutKind | null>(null)
 
   const rows = tickets.map(t => ({ t, c: clock(t, now) }))
   const scope = mine ? rows.filter(r => r.t.coordinator === viewer) : rows
@@ -27,7 +25,6 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
   const selected = tickets.find(t => t.id === selectedId) ?? null
 
   const select = (id: string | null) => go(adminHref('queue', id))
-  const closePrintout = useCallback(() => setPrintout(null), [])
 
   return (
     <main className="admin-body">
@@ -44,7 +41,6 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
             <input type="checkbox" checked={mine} onChange={e => setMine(e.target.checked)} />
             Only mine
           </label>
-          <button className="btn-outline" onClick={() => setPrintout('agenda')}>Print</button>
         </div>
       </div>
 
@@ -73,7 +69,6 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
 
         {selected && <TicketPanel key={selected.id + (ask ?? '')} ticket={selected} schedule={schedule} now={now} viewer={viewer} ask={ask} onClose={() => select(null)} />}
       </div>
-      {printout && <Printouts kind={printout} setKind={setPrintout} tickets={tickets} now={now} onClose={closePrintout} />}
     </main>
   )
 }

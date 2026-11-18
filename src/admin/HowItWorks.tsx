@@ -11,7 +11,7 @@ const STEPS: [string, ReactNode][] = [
   </>],
   ['Replies', 'Every reply-all lands on the ticket within about 15 minutes (or right away with "Check mail now"), including people added to the thread. Dates in a reply are suggested as the ETA; the coordinator confirms.'],
   ['No reply', <span key="b">After 12 business hours the tracker follows up on the same thread, and Javier is notified. The coordinator can press <strong>Escalate to Chris</strong> to add the regional manager with a summary.</span>],
-  ['Calls and visits', <span key="b">Logged on the ticket, never emailed. <strong>Visit agenda</strong> prints every open ticket with its latest update for Ruben's visits; <strong>Driver report</strong> prints a stop sheet by building and room.</span>],
+  ['Calls and visits', <span key="b">Write down a phone call or visit under <strong>More options</strong>. It's kept on the ticket and never emailed.</span>],
   ['Confirming the fix', 'The daily delivery schedule comes to the tracker mailbox and is matched by order number. At 4 PM the reporter gets an email asking them to reply YES or NO. YES closes the ticket; NO reopens it and replies on the Airgas thread.'],
   ['Email drafting', 'Claude (Anthropic) writes drafts from the ticket and thread. Nothing is sent until the coordinator presses Send. The API key stays in a GitHub secret and is never sent to the browser.'],
 ]

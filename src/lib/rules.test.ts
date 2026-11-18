@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  agendaAsk, agendaEta, clock, coordinatorFor, createTicket, deadline, driverGroups, locationLabel,
+  clock, coordinatorFor, createTicket, deadline, locationLabel,
   missingFromSchedule, nextTicketId, openingSubject, recipients, threadState, validateReport,
 } from './rules'
 import { fromWall } from './time'
@@ -91,26 +91,7 @@ describe('thread', () => {
   })
 })
 
-describe('printouts', () => {
-  const reply = { kind: 'email' as const, from: 'gordan' as const, at: NOW.toISOString(), text: 'Tomorrow.' }
-  it('picks the agenda note', () => {
-    const t = ticket()
-    expect(agendaAsk(t)).toBe('No reply on the thread yet')
-    const r = { ...t, thread: [...t.thread, reply] }
-    expect(agendaAsk(r)).toBe('Need a firm ETA')
-    expect(agendaAsk({ ...r, etaSuggestion: { date: '2026-10-06', quote: 'Tomorrow.', from: 'gordan' } })).toBe('Confirm the suggested ETA')
-    expect(agendaAsk({ ...r, eta: '2026-10-06' })).toBe('Confirm it arrives Tue Oct 6')
-    expect(agendaEta({ ...r, etaSuggestion: { date: '2026-10-06', quote: '', from: 'gordan' } })).toBe('Tue Oct 6?')
-  })
-  it('groups the driver sheet by building and sorts rooms numerically', () => {
-    const groups = driverGroups([
-      ticket({ id: 'a', room: '312' }),
-      ticket({ id: 'b', room: '24' }),
-      ticket({ id: 'c', building: 'oconnor', room: '205' }),
-      ticket({ id: 'd', room: '100', status: 'done' }),
-    ])
-    expect(groups.map(g => [g.building, g.tickets.map(t => t.id)])).toEqual([['SST', ['b', 'a']], ["O'Connor", ['c']]])
-  })
+describe('deliveries', () => {
   it('warns about promised deliveries missing from the schedule', () => {
     const due = ticket({ eta: '2026-10-05' })
     expect(missingFromSchedule([due], ['AG-1'], NOW)).toEqual([due])
