@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { CATEGORY_LABEL, clock, locationLabel } from '../lib/rules'
 import type { RiceStaff, ScheduleEntry, Ticket } from '../lib/types'
 import { adminHref, go } from '../router'
-import { TONE_TEXT, threadSummary } from './display'
+import { dueInfo, threadSummary } from './display'
 import { StatusPill } from './StatusPill'
 import { Printouts, type PrintoutKind } from './Printouts'
 import { TicketPanel } from './TicketPanel'
@@ -35,7 +35,7 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
         <div className="switch" role="group" aria-label="Show">
           {FILTERS.map(([k, label]) => (
             <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)}>
-              {label}<span className={'mono' + (k === 'overdue' && scope.some(r => r.c.over) ? ' late' : '')}>{scope.filter(r => matches(k, r)).length}</span>
+              {label}<span className="mono">{scope.filter(r => matches(k, r)).length}</span>
             </button>
           ))}
         </div>
@@ -52,17 +52,18 @@ export function Queue({ tickets, schedule, now, viewer, selectedId, ask }: { tic
         <div className="card table-wrap">
           <div className={'table' + (selected ? ' table--compact' : '')}>
             <div className="table__row table__head">
-              {['Ticket', 'Problem', 'Airgas', 'Status', 'Time'].map(h => <span key={h}>{h}</span>)}
+              {['Ticket', 'Problem', 'Airgas', 'Status', 'Due'].map(h => <span key={h}>{h}</span>)}
             </div>
-            {visible.map(({ t, c }) => {
+            {visible.map(({ t }) => {
               const th = threadSummary(t)
+              const due = dueInfo(t, now)
               return (
                 <a key={t.id} href={adminHref('queue', t.id)} className="table__row" aria-current={t.id === selectedId ? 'true' : undefined}>
                   <span className="mono table__id">{t.id}</span>
                   <span className="stack"><span className="strong">{CATEGORY_LABEL[t.category]} · {locationLabel(t)}</span><span className="clip muted">{t.description}</span></span>
-                  <span className="stack"><span className="strong" style={{ color: th.color }}>{th.top}</span><span className="clip faint">{th.sub}</span></span>
+                  <span className="stack"><span style={{ color: th.color, fontWeight: 500 }}>{th.top}</span>{th.sub && <span className="clip faint">{th.sub}</span>}</span>
                   <span><StatusPill status={t.status} /></span>
-                  <span className="strong" style={{ color: TONE_TEXT[c.tone] }}>{c.text}</span>
+                  <span className="stack"><span className={due.late ? 'late-tag' : 'muted'}>{due.late ? 'Late' : due.text}</span>{due.late && <span className="faint clip">was due {due.text.split(" · ")[0]}</span>}</span>
                 </a>
               )
             })}

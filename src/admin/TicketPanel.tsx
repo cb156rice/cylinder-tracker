@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, clock, locationLabel,
+  CATEGORY_LABEL, PEOPLE, RESOLVER_LABEL, RICE_STAFF, deadline, isOverdue, locationLabel,
 } from '../lib/rules'
 import { fmt, fmtDay, fmtShort, sameDay } from '../lib/time'
 import {
@@ -11,7 +11,6 @@ import { useStore } from '../store/hooks'
 import type { Change } from '../store/store'
 import { scheduleAskDraft } from '../lib/draft'
 import { Composer } from './Composer'
-import { TONE_BAR, TONE_TEXT } from './display'
 import { StatusPill } from './StatusPill'
 import { Thread } from './Thread'
 
@@ -33,12 +32,13 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
   const [doneNotes, setDoneNotes] = useState('')
 
   const apply = (change: Change) => store.update(t.id, change)
-  const c = clock(t, now)
+  const due = deadline(t)
+  const late = isOverdue(t, now)
 
   const onSchedule = schedule.some(r => r.order === t.order && sameDay(r.date, now))
   const etaNote = !t.eta ? null
     : sameDay(t.eta, now)
-      ? onSchedule ? { text: "On today's delivery schedule", color: 'oklch(0.42 0.1 150)' } : { text: "Not on today's schedule", color: 'oklch(0.48 0.11 65)' }
+      ? onSchedule ? { text: "On today's delivery schedule", color: 'var(--muted)' } : { text: "Not on today's schedule", color: 'var(--muted)' }
       : { text: "We'll check that day's schedule", color: 'var(--muted)' }
 
   const pickSize = t.status === 'progress' && (!t.complexity || resizing)
@@ -73,7 +73,7 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
         {/* ---- Next step ---- */}
         {t.status === 'done' ? (
           <div className="resolved">
-            <span className="strong" style={{ fontSize: 14, color: 'var(--green-fg)' }}>
+            <span className="strong" style={{ fontSize: 14 }}>
               Fixed by {t.resolvedBy ? RESOLVER_LABEL[t.resolvedBy] : '—'}{t.resolvedAt && ` · ${fmt(new Date(t.resolvedAt))}`}
             </span>
             {t.confirm === 'yes' && <span className="muted">The lab confirmed it's fixed.</span>}
@@ -95,7 +95,7 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
             </label>
             <div className="row-end">
               <button className="btn btn--sm" onClick={() => setCompleting(false)}>Cancel</button>
-              <button className="btn btn--sm btn--green" onClick={() => { apply((x, n) => complete(x, doneBy, doneNotes, n)); setCompleting(false) }}>Close ticket</button>
+              <button className="btn btn--sm btn--primary" onClick={() => { apply((x, n) => complete(x, doneBy, doneNotes, n)); setCompleting(false) }}>Close ticket</button>
             </div>
           </div>
         ) : pickSize ? (
@@ -115,17 +115,17 @@ export function TicketPanel({ ticket: t, schedule, now, viewer, ask, onClose }: 
         ) : (
           <div className="nextstep">
             <div className="row-between" style={{ alignItems: 'baseline' }}>
-              <span className="muted">{t.status === 'open' ? 'Airgas should respond' : 'Airgas should fix it'}</span>
-              <span className="strong" style={{ color: TONE_TEXT[c.tone], fontSize: 14 }}>{c.text}</span>
+              <span title="Counts business hours only: 9 AM–5 PM, Mon–Fri">
+                {t.status === 'open' ? 'Airgas reply due' : 'Fix due'} <strong>{due ? fmt(due) : '—'}</strong>
+              </span>
+              {late && <span className="late-tag">Late</span>}
             </div>
-            <div className="bar" title="Counts business hours only: 9 AM–5 PM, Mon–Fri"><div style={{ width: `${c.pct}%`, background: TONE_BAR[c.tone] }} /></div>
-            {c.over && <span style={{ fontSize: 12.5, color: 'var(--red-fg)' }}>Late, so Javier has been told.</span>}
             {t.status === 'open'
-              ? <button className="btn btn--sm btn--primary" onClick={() => apply((x, n) => startProgress(x, viewer, n))}>Airgas is on it: start tracking</button>
+              ? <div className="row-end"><button className="btn btn--sm btn--primary" onClick={() => apply((x, n) => startProgress(x, viewer, n))}>Mark in progress</button></div>
               : (
                 <div className="row-between" style={{ alignItems: 'center' }}>
-                  <button className="link-btn" onClick={() => setResizing(true)}>Size: {SIZE[t.complexity!][0]} · change</button>
-                  <button className="btn btn--sm btn--green" onClick={() => { setCompleting(true); setDoneBy('airgas'); setDoneNotes('') }}>It's fixed</button>
+                  <button className="link-btn link-btn--muted" onClick={() => setResizing(true)}>Size: {SIZE[t.complexity!][0]} · change</button>
+                  <button className="btn btn--sm btn--primary" onClick={() => { setCompleting(true); setDoneBy('airgas'); setDoneNotes('') }}>Mark fixed</button>
                 </div>
               )}
           </div>
